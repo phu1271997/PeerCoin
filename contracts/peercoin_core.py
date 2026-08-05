@@ -42,7 +42,7 @@ class Paper:
     bounty_pool: bigint
     state: str
     submitted_at: bigint
-    reviewer_ids: DynArray[str]
+    reviewer_ids: str
     ai_verdict: str
     ai_rigor: u8
     ai_novelty: u8
@@ -81,6 +81,12 @@ def _addr_str(addr: typing.Any) -> str:
             h = "0x0" + h[2:]
         return h
     return str(addr)
+
+
+def _split_ids(s: str) -> typing.List[str]:
+    if not s:
+        return []
+    return [x for x in s.split(",") if x]
 
 
 def _require(cond: bool, msg: str):
@@ -139,9 +145,7 @@ For each human reviewer, decide whether their `verdict` is ALIGNED with your fin
 - REJECT and WEAK_REJECT are considered negative
 - Reviewer aligned = (their side) matches (your side)
 
-## OUTPUT RULES (STRICT)
-Respond with ONLY a JSON object, NO code fences, NO prose before or after.
-
+Output ONLY valid JSON matching this schema:
 {{
   "verdict": "ACCEPT" | "REJECT",
   "rigor": <int 0..100>,
@@ -200,8 +204,6 @@ class Contract(gl.Contract):
         bounty_topup = gl.message.value - self.author_stake_amount
         paper_id_str = str(self.next_paper_id)
 
-        empty_reviewers = gl.storage.inmem_allocate(DynArray[str])
-
         self.papers[paper_id_str] = Paper(
             author=_to_address(gl.message.sender_address),
             title=title.strip(),
@@ -212,7 +214,7 @@ class Contract(gl.Contract):
             bounty_pool=bounty_topup,
             state=STATE_OPEN,
             submitted_at=bigint(gl.block.timestamp),
-            reviewer_ids=empty_reviewers,
+            reviewer_ids="",
             ai_verdict="",
             ai_rigor=u8(0),
             ai_novelty=u8(0),
@@ -252,7 +254,8 @@ class Contract(gl.Contract):
         else:
             self.reviews[paper_id_str] = gl.storage.inmem_allocate(TreeMap[str, Review])
 
-        _require(len(paper.reviewer_ids) < int(self.max_reviewers), "max reviewers reached")
+        r_ids = _split_ids(paper.reviewer_ids)
+        _require(len(r_ids) < int(self.max_reviewers), "max reviewers reached")
 
         self.reviews[paper_id_str][reviewer_id] = Review(
             reviewer=_to_address(gl.message.sender_address),
@@ -264,7 +267,8 @@ class Contract(gl.Contract):
             claimed=False,
         )
 
-        paper.reviewer_ids.append(reviewer_id)
+        r_ids.append(reviewer_id)
+        paper.reviewer_ids = ",".join(r_ids)
         if paper.state == STATE_OPEN:
             paper.state = STATE_REVIEWING
         self.papers[paper_id_str] = paper
@@ -276,7 +280,8 @@ class Contract(gl.Contract):
         _require(paper.state in (STATE_OPEN, STATE_REVIEWING), "paper already finalized or failed")
 
         now = bigint(gl.block.timestamp)
-        reviewer_count = len(paper.reviewer_ids)
+        r_ids = _split_ids(paper.reviewer_ids)
+        reviewer_count = len(r_ids)
         window_over = (now - paper.submitted_at) >= self.review_window_secs
         enough_reviews = reviewer_count >= int(self.min_reviewers)
         _require(enough_reviews or window_over, "not ready to finalize")
@@ -288,7 +293,7 @@ class Contract(gl.Contract):
         paper_abstract = paper.abstract
 
         review_snapshot = []
-        for rid in paper.reviewer_ids:
+        for rid in r_ids:
             r = self.reviews[paper_id_str][rid]
             review_snapshot.append({
                 "reviewer_id": rid,
@@ -298,92 +303,106 @@ class Contract(gl.Contract):
             })
 
         def leader_fn():
-            try:
-                paper_text = gl.nondet.web.render(paper_url, mode="text")
-            except Exception as e:
-                return {"error": "PAPER_FETCH_FAILED", "detail": str(e)[:200]}
+            rendered = gl.nondet.web.render(paper_url)
+            p_text = rendered.text if rendered else ""
+            if not p_text:
+                p_text = paper_abstract
 
-            if not paper_text or len(paper_text) < 500:
-                return {"error": "PAPER_TOO_SHORT"}
-
-            reviews_with_text = []
-            for rv in review_snapshot:
-                try:
-                    rv_text = gl.nondet.web.render(rv["review_url"], mode="text")
-                except Exception:
-                    rv_text = ""
-                reviews_with_text.append({
-                    "reviewer_id": rv["reviewer_id"],
-                    "verdict": rv["verdict"],
-                    "confidence": rv["confidence"],
-                    "review_text": (rv_text or "")[:3000],
+            hydrated_reviews = []
+            for item in review_snapshot:
+                rv_url = item.get("review_url", "")
+                rv_rendered = gl.nondet.web.render(rv_url) if rv_url else None
+                rv_text = rv_rendered.text if rv_rendered else ""
+                hydrated_reviews.append({
+                    "reviewer_id": item["reviewer_id"],
+                    "verdict": item["verdict"],
+                    "confidence": item["confidence"],
+                    "review_url": rv_url,
+                    "review_text": rv_text[:3000],
                 })
 
             prompt = _build_jury_prompt(
                 title=paper_title,
                 field=paper_field,
                 abstract=paper_abstract,
-                paper_text=paper_text[:12000],
-                reviews=reviews_with_text,
+                paper_text=p_text[:12000],
+                reviews=hydrated_reviews,
             )
+            resp = gl.nondet.exec_prompt(prompt)
+            parsed = _extract_json(resp)
+            if not parsed:
+                return json.dumps({
+                    "verdict": "REJECT",
+                    "rigor": 0,
+                    "novelty": 0,
+                    "reproducibility": 0,
+                    "reason": "Failed to parse validator AI jury response as JSON",
+                    "reviewer_alignment": {},
+                })
+            return json.dumps(parsed)
 
-            raw = gl.nondet.exec_prompt(prompt, response_format="json")
-            parsed = _extract_json(raw)
-            if parsed is None:
-                return {"error": "BAD_JSON"}
-
-            required = ("verdict", "rigor", "novelty", "reproducibility", "reason", "reviewer_alignment")
-            if not all(k in parsed for k in required):
-                return {"error": "MISSING_FIELDS"}
-            if parsed["verdict"] not in ("ACCEPT", "REJECT"):
-                return {"error": "BAD_VERDICT"}
-
-            return parsed
-
-        def validator_fn(leader_res) -> bool:
-            if not isinstance(leader_res, gl.vm.Return):
+        def validator_fn(leader_result: str) -> bool:
+            parsed = _extract_json(leader_result)
+            if not parsed:
                 return False
-            leader = leader_res.calldata
-            if not isinstance(leader, dict):
+            lead_verdict = str(parsed.get("verdict", ""))
+            if lead_verdict not in ("ACCEPT", "REJECT"):
+                return False
+            lead_avg = (
+                int(parsed.get("rigor", 0))
+                + int(parsed.get("novelty", 0))
+                + int(parsed.get("reproducibility", 0))
+            ) // 3
+
+            rendered = gl.nondet.web.render(paper_url)
+            p_text = rendered.text if rendered else paper_abstract
+
+            hydrated_reviews = []
+            for item in review_snapshot:
+                rv_url = item.get("review_url", "")
+                rv_rendered = gl.nondet.web.render(rv_url) if rv_url else None
+                rv_text = rv_rendered.text if rv_rendered else ""
+                hydrated_reviews.append({
+                    "reviewer_id": item["reviewer_id"],
+                    "verdict": item["verdict"],
+                    "confidence": item["confidence"],
+                    "review_url": rv_url,
+                    "review_text": rv_text[:3000],
+                })
+
+            prompt = _build_jury_prompt(
+                title=paper_title,
+                field=paper_field,
+                abstract=paper_abstract,
+                paper_text=p_text[:12000],
+                reviews=hydrated_reviews,
+            )
+            v_resp = gl.nondet.exec_prompt(prompt)
+            v_parsed = _extract_json(v_resp)
+            if not v_parsed:
                 return False
 
-            mine = leader_fn()
-            if not isinstance(mine, dict):
+            v_verdict = str(v_parsed.get("verdict", ""))
+            v_avg = (
+                int(v_parsed.get("rigor", 0))
+                + int(v_parsed.get("novelty", 0))
+                + int(v_parsed.get("reproducibility", 0))
+            ) // 3
+
+            if lead_verdict != v_verdict:
                 return False
-
-            if "error" in leader:
-                return mine.get("error") == leader.get("error")
-
-            if "error" in mine:
+            if abs(lead_avg - v_avg) > 15:
                 return False
+            return True
 
-            if mine.get("verdict") != leader.get("verdict"):
-                return False
-
-            for k in ("rigor", "novelty", "reproducibility"):
-                if abs(int(mine.get(k, 0)) - int(leader.get(k, 0))) > 15:
-                    return False
-
-            mine_align = mine.get("reviewer_alignment", {})
-            leader_align = leader.get("reviewer_alignment", {})
-
-            my_aligned_count = sum(1 for v in mine_align.values() if bool(v) is True)
-            ld_aligned_count = sum(1 for v in leader_align.values() if bool(v) is True)
-
-            return my_aligned_count == ld_aligned_count
-
-        result = gl.vm.run_nondet(leader_fn, validator_fn)
-
-        if isinstance(result, dict) and "error" in result:
+        res_str = gl.vm.run_nondet(leader_fn, validator_fn)
+        ai = _extract_json(res_str)
+        if not ai:
             paper.state = STATE_FAILED
-            paper.ai_reason = f"AI jury execution failed: {result['error']}"
+            paper.finalized_at = bigint(gl.block.timestamp)
             self.papers[paper_id_str] = paper
             return
 
-        self._settle(paper_id_str, result)
-
-    def _settle(self, paper_id_str: str, ai: dict) -> None:
-        paper = self.papers[paper_id_str]
         rigor = int(ai.get("rigor", 0))
         novelty = int(ai.get("novelty", 0))
         repro = int(ai.get("reproducibility", 0))
@@ -396,7 +415,7 @@ class Contract(gl.Contract):
 
         alignment_map = ai.get("reviewer_alignment", {})
 
-        for rid in paper.reviewer_ids:
+        for rid in r_ids:
             r = self.reviews[paper_id_str][rid]
             is_aligned = bool(alignment_map.get(rid, False))
             r.aligned = is_aligned
@@ -415,7 +434,7 @@ class Contract(gl.Contract):
         paper.bounty_pool = pool
 
         rep = gl.get_contract_at(self.reputation).as_interface(IReputation)
-        for rid in paper.reviewer_ids:
+        for rid in r_ids:
             r = self.reviews[paper_id_str][rid]
             if r.aligned:
                 rep.bump(r.reviewer, i256(5))
@@ -475,8 +494,9 @@ class Contract(gl.Contract):
         _require(not r.claimed, "reviewer reward already claimed")
         _require(r.aligned, "reviewer was not aligned with AI jury")
 
+        r_ids = _split_ids(paper.reviewer_ids)
         aligned_count = 0
-        for rid in paper.reviewer_ids:
+        for rid in r_ids:
             if self.reviews[paper_id_str][rid].aligned:
                 aligned_count += 1
 
@@ -494,9 +514,7 @@ class Contract(gl.Contract):
     def get_paper(self, paper_id_str: str) -> dict:
         _require(paper_id_str in self.papers, "paper not found")
         p = self.papers[paper_id_str]
-        rev_ids = []
-        for rid in p.reviewer_ids:
-            rev_ids.append(rid)
+        rev_ids = _split_ids(p.reviewer_ids)
 
         return {
             "id": paper_id_str,
@@ -520,11 +538,12 @@ class Contract(gl.Contract):
         }
 
     @gl.public.view
-    def get_review(self, paper_id_str: str, reviewer_addr_str: str) -> dict:
+    def get_review(self, paper_id_str: str, reviewer_id: str) -> dict:
         _require(paper_id_str in self.reviews, "paper reviews not found")
-        _require(reviewer_addr_str in self.reviews[paper_id_str], "review not found")
-        r = self.reviews[paper_id_str][reviewer_addr_str]
+        _require(reviewer_id in self.reviews[paper_id_str], "review not found")
+        r = self.reviews[paper_id_str][reviewer_id]
         return {
+            "paper_id": paper_id_str,
             "reviewer": _addr_str(r.reviewer),
             "verdict": r.verdict,
             "confidence": int(r.confidence),
@@ -535,20 +554,23 @@ class Contract(gl.Contract):
         }
 
     @gl.public.view
-    def list_papers(self, offset: int, limit: int) -> dict:
+    def list_papers(self, offset: int = 0, limit: int = 20) -> dict:
         total = int(self.next_paper_id)
-        items = []
-        start = max(0, offset)
-        end = min(total, start + max(1, limit))
+        if offset < 0:
+            offset = 0
+        if limit <= 0:
+            limit = 20
 
-        for idx in range(start, end):
-            pid = str(idx)
+        items = []
+        end = min(total, offset + limit)
+        for i in range(offset, end):
+            pid = str(i)
             if pid in self.papers:
                 items.append(self.get_paper(pid))
 
         return {
             "total": total,
-            "offset": start,
+            "offset": offset,
             "limit": limit,
             "items": items,
         }
