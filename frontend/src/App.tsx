@@ -6,7 +6,7 @@ import { PaperDetail } from './pages/PaperDetail';
 import { SubmitReview } from './pages/SubmitReview';
 import { Finalize } from './pages/Finalize';
 import { Leaderboard } from './pages/Leaderboard';
-import { connectWallet, ensureStudionet } from './lib/wallet';
+import { connectWallet } from './lib/wallet';
 
 export const App: React.FC = () => {
   const [account, setAccount] = useState<`0x${string}` | null>(null);

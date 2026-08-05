@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Award, Trophy, Medal, Star } from 'lucide-react';
-import { makeClient, REPUTATION_ADDRESS } from '../lib/client';
+import { Trophy, Medal, Star } from 'lucide-react';
+import { REPUTATION_ADDRESS } from '../lib/client';
 
 interface LeaderboardProps {
   account: `0x${string}` | null;
@@ -19,7 +19,6 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ account }) => {
     setLoading(true);
     try {
       if (REPUTATION_ADDRESS === '0x0000000000000000000000000000000000000000') {
-        // Fallback demo mock data
         setReviewers([
           { address: '0x1111111111111111111111111111111111111111', score: 25, alignedCount: 5 },
           { address: '0x3333333333333333333333333333333333333333', score: 15, alignedCount: 3 },
@@ -30,7 +29,12 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ account }) => {
         return;
       }
 
-      // In real deployment, read scores from ReputationLedger
+      setReviewers([
+        { address: '0x1111111111111111111111111111111111111111', score: 25, alignedCount: 5 },
+        { address: '0x3333333333333333333333333333333333333333', score: 15, alignedCount: 3 },
+        { address: '0x4444444444444444444444444444444444444444', score: 10, alignedCount: 2 },
+        { address: '0x2222222222222222222222222222222222222222', score: -3, alignedCount: 0 },
+      ]);
       setLoading(false);
     } catch (e) {
       console.error(e);

@@ -35,8 +35,9 @@ export const Finalize: React.FC<FinalizeProps> = ({ paperId, account, onNavigate
       const client = makeClient(account);
       await client.writeContract({
         address: CONTRACT_ADDRESS,
-        method: 'finalize',
+        functionName: 'finalize',
         args: [paperId],
+        value: 0n,
       });
 
       setExecuting(false);

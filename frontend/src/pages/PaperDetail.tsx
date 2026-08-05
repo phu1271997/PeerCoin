@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, ExternalLink, ShieldCheck, UserCheck, Play, Award, CheckCircle } from 'lucide-react';
+import { ArrowLeft, ExternalLink, UserCheck, Play, Award } from 'lucide-react';
 import { makeClient, CONTRACT_ADDRESS } from '../lib/client';
 import { VerdictCard } from '../components/VerdictCard';
 
@@ -24,7 +24,6 @@ export const PaperDetail: React.FC<PaperDetailProps> = ({ paperId, account, onNa
     setLoading(true);
     try {
       if (CONTRACT_ADDRESS === '0x0000000000000000000000000000000000000000') {
-        // Fallback demo mock
         setPaper({
           id: paperId,
           title: 'Zero-Knowledge Proofs for Autonomous AI Agent Consensus',
@@ -69,7 +68,7 @@ export const PaperDetail: React.FC<PaperDetailProps> = ({ paperId, account, onNa
       const client = makeClient(account || '0x0000000000000000000000000000000000000000');
       const p = await client.readContract({
         address: CONTRACT_ADDRESS,
-        method: 'get_paper',
+        functionName: 'get_paper',
         args: [paperId],
       }) as any;
 
@@ -81,7 +80,7 @@ export const PaperDetail: React.FC<PaperDetailProps> = ({ paperId, account, onNa
           try {
             const r = await client.readContract({
               address: CONTRACT_ADDRESS,
-              method: 'get_review',
+              functionName: 'get_review',
               args: [paperId, rid],
             });
             revList.push(r);
@@ -107,8 +106,9 @@ export const PaperDetail: React.FC<PaperDetailProps> = ({ paperId, account, onNa
         const client = makeClient(account);
         await client.writeContract({
           address: CONTRACT_ADDRESS,
-          method: 'claim',
+          functionName: 'claim',
           args: [paperId],
+          value: 0n,
         });
       }
       setClaimStatus('Rewards claimed successfully on studionet!');

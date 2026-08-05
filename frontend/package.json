@@ -10,7 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "genlayer-js": "^0.2.16",
+    "genlayer-js": "^1.2.0",
     "lucide-react": "^0.469.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"

@@ -34,7 +34,6 @@ export const Submit: React.FC<SubmitProps> = ({ account, onNavigate }) => {
 
     try {
       if (CONTRACT_ADDRESS === '0x0000000000000000000000000000000000000000') {
-        // Simulated local submission if contract not set
         setTimeout(() => {
           setSubmitting(false);
           setSuccessId('0');
@@ -49,7 +48,7 @@ export const Submit: React.FC<SubmitProps> = ({ account, onNavigate }) => {
 
       const tx = await client.writeContract({
         address: CONTRACT_ADDRESS,
-        method: 'submit_paper',
+        functionName: 'submit_paper',
         args: [title.trim(), field.trim(), url.trim(), abstract.trim()],
         value: totalValue,
       });

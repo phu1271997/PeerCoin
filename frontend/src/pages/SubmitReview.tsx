@@ -44,7 +44,7 @@ export const SubmitReview: React.FC<SubmitReviewProps> = ({ paperId, account, on
 
       await client.writeContract({
         address: CONTRACT_ADDRESS,
-        method: 'submit_review',
+        functionName: 'submit_review',
         args: [paperId, verdict, confidence, reviewUrl.trim()],
         value: stakeValue,
       });

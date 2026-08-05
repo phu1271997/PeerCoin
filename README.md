@@ -56,8 +56,8 @@ Author, Reviewer ─────►│                       │
 2. In Settings, select **Reset Storage** and perform a hard refresh (`Cmd+Shift+R`).
 3. Connect your MetaMask wallet and switch to **GenLayer Studio Network** (`chainId: 61999` / `0xF1EF`, RPC: `https://studio.genlayer.com/api`).
 4. Fund your wallet with GEN from the Studio **Accounts** panel.
-5. Deploy `reputation_ledger.py` and verify `Result: SUCCESS` in transaction details.
-6. Deploy `peercoin_core.py` with constructor arguments and verify `Result: SUCCESS`.
+5. Deploy `reputation_ledger.py` -> `0x5cBf00F1effeae8A5062c3029eda8E826b5C7ebE`.
+6. Deploy `peercoin_core.py` -> `0x731e5800dfc5689B7B5b93D1634f335464513Ab3`.
 7. Execute `set_core(peercoin_core_address)` on `ReputationLedger`.
 
 Detailed deployment instructions are available in [`scripts/deploy.md`](file:///Users/peter/Downloads/AI/Genlayer/6-PeerCoin/scripts/deploy.md).
@@ -68,8 +68,8 @@ Detailed deployment instructions are available in [`scripts/deploy.md`](file:///
 
 | Contract | Network | Address | Explorer Link |
 |---|---|---|---|
-| `PeerCoinCore` | studionet | `0x0000000000000000000000000000000000000000` | [Explorer Tx](https://genlayer-explorer.vercel.app) |
-| `ReputationLedger` | studionet | `0x0000000000000000000000000000000000000000` | [Explorer Tx](https://genlayer-explorer.vercel.app) |
+| `PeerCoinCore` | studionet | `0x731e5800dfc5689B7B5b93D1634f335464513Ab3` | [Explorer Tx](https://genlayer-explorer.vercel.app) |
+| `ReputationLedger` | studionet | `0x5cBf00F1effeae8A5062c3029eda8E826b5C7ebE` | [Explorer Tx](https://genlayer-explorer.vercel.app) |
 
 ---
 
@@ -82,21 +82,14 @@ Detailed deployment instructions are available in [`scripts/deploy.md`](file:///
    ```
 2. Configure environment variables in `.env`:
    ```env
-   VITE_CONTRACT_ADDRESS=0xYourPeerCoinCoreAddress
-   VITE_REPUTATION_ADDRESS=0xYourReputationLedgerAddress
+   VITE_CONTRACT_ADDRESS=0x731e5800dfc5689B7B5b93D1634f335464513Ab3
+   VITE_REPUTATION_ADDRESS=0x5cBf00F1effeae8A5062c3029eda8E826b5C7ebE
    ```
 3. Start the local development server:
    ```bash
    npm run dev
    ```
-4. Deploy to Vercel/Netlify:
+4. Deploy to Vercel:
    ```bash
-   npm run build
+   npx vercel --prod
    ```
-
----
-
-## 7. Video Walkthrough & Live Demo
-
-- **Live Application URL**: `https://peercoin.vercel.app` (or local `http://localhost:3000`)
-- **Video Walkthrough (2-4 mins)**: Covers MetaMask connection on `studionet`, author preprint submission with 100 GEN stake, human review submissions with 20 GEN stakes, triggering non-deterministic AI jury consensus, displaying AI rationale, pull-payment claims, and reputation leaderboard updates.

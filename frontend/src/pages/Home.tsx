@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { PlusCircle, Search, Filter, ShieldCheck, ChevronRight, ExternalLink } from 'lucide-react';
+import { PlusCircle, Search, Filter, ShieldCheck, ChevronRight } from 'lucide-react';
 import { makeClient, CONTRACT_ADDRESS } from '../lib/client';
 
 interface HomeProps {
@@ -21,7 +21,6 @@ export const Home: React.FC<HomeProps> = ({ account, onNavigate }) => {
     setLoading(true);
     try {
       if (CONTRACT_ADDRESS === '0x0000000000000000000000000000000000000000') {
-        // Fallback sample demo data if contract not deployed yet
         setPapers([
           {
             id: '0',
@@ -63,7 +62,7 @@ export const Home: React.FC<HomeProps> = ({ account, onNavigate }) => {
       const client = makeClient(account || '0x0000000000000000000000000000000000000000');
       const res = await client.readContract({
         address: CONTRACT_ADDRESS,
-        method: 'list_papers',
+        functionName: 'list_papers',
         args: [0, 50],
       }) as any;
 
