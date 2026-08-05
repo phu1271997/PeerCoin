@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Send, ShieldAlert, CheckCircle, FileText } from 'lucide-react';
+import { ArrowLeft, Send, ShieldAlert, CheckCircle, FileText, Loader2 } from 'lucide-react';
 import { makeClient, CONTRACT_ADDRESS } from '../lib/client';
 
 interface SubmitProps {
@@ -14,6 +14,7 @@ export const Submit: React.FC<SubmitProps> = ({ account, onNavigate }) => {
   const [abstract, setAbstract] = useState('');
   const [bountyTopup, setBountyTopup] = useState('10');
   const [submitting, setSubmitting] = useState(false);
+  const [submitStep, setSubmitStep] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [createdPaperId, setCreatedPaperId] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
@@ -31,6 +32,7 @@ export const Submit: React.FC<SubmitProps> = ({ account, onNavigate }) => {
     }
 
     setSubmitting(true);
+    setSubmitStep('Signing transaction in MetaMask...');
     setError(null);
 
     try {
@@ -46,8 +48,19 @@ export const Submit: React.FC<SubmitProps> = ({ account, onNavigate }) => {
         value: totalValue,
       }) as any;
 
-      setTxHash(typeof tx === 'string' ? tx : null);
+      const hashStr = typeof tx === 'string' ? tx : null;
+      setTxHash(hashStr);
 
+      if (hashStr) {
+        setSubmitStep('Waiting for Studionet block confirmation & state finalization...');
+        try {
+          await client.waitForTransactionReceipt({ hash: hashStr as any });
+        } catch (receiptErr) {
+          console.warn("waitForTransactionReceipt warning:", receiptErr);
+        }
+      }
+
+      setSubmitStep('Fetching newly created preprint ID from Studionet...');
       try {
         const res = await client.readContract({
           address: CONTRACT_ADDRESS,
@@ -223,13 +236,20 @@ export const Submit: React.FC<SubmitProps> = ({ account, onNavigate }) => {
               </div>
             </div>
 
+            {submitting && submitStep && (
+              <div className="p-3 rounded-xl bg-slate-950 border border-teal-500/30 text-xs text-teal-300 flex items-center space-x-2 font-mono">
+                <Loader2 className="w-4 h-4 animate-spin flex-shrink-0" />
+                <span>{submitStep}</span>
+              </div>
+            )}
+
             <button
               type="submit"
               disabled={submitting || !account}
               className="w-full py-3.5 rounded-xl bg-gradient-to-r from-teal-500 to-emerald-500 text-slate-950 font-bold text-sm hover:opacity-90 transition disabled:opacity-50 flex items-center justify-center space-x-2 shadow-lg shadow-teal-500/20"
             >
               <Send className="w-4 h-4" />
-              <span>{submitting ? 'Submitting to Studionet...' : 'Submit & Deposit Stake'}</span>
+              <span>{submitting ? 'Processing Transaction...' : 'Submit & Deposit Stake'}</span>
             </button>
           </form>
         )}

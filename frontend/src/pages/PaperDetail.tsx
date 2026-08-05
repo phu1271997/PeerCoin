@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, ExternalLink, UserCheck, Play, Award, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, ExternalLink, UserCheck, Play, Award, AlertTriangle, RefreshCw } from 'lucide-react';
 import { makeClient, CONTRACT_ADDRESS } from '../lib/client';
 import { VerdictCard } from '../components/VerdictCard';
 
@@ -21,7 +21,7 @@ export const PaperDetail: React.FC<PaperDetailProps> = ({ paperId, account, onNa
     fetchPaperData();
   }, [paperId, account]);
 
-  const fetchPaperData = async () => {
+  const fetchPaperData = async (retriesLeft = 3) => {
     setLoading(true);
     setError(null);
     try {
@@ -52,9 +52,18 @@ export const PaperDetail: React.FC<PaperDetailProps> = ({ paperId, account, onNa
       }
     } catch (err: any) {
       console.error(err);
+      if (retriesLeft > 0) {
+        // Transaction may be finalizing on Studionet, retry after 2 seconds
+        setTimeout(() => {
+          fetchPaperData(retriesLeft - 1);
+        }, 2000);
+        return;
+      }
       setError(err?.message || `Paper #${paperId} not found on GenLayer Studionet contract.`);
     } finally {
-      setLoading(false);
+      if (retriesLeft <= 0) {
+        setLoading(false);
+      }
     }
   };
 
@@ -64,13 +73,19 @@ export const PaperDetail: React.FC<PaperDetailProps> = ({ paperId, account, onNa
     setClaimStatus(null);
     try {
       const client = makeClient(account);
-      await client.writeContract({
+      const tx = await client.writeContract({
         address: CONTRACT_ADDRESS,
         functionName: 'claim',
         args: [paperId],
         value: 0n,
-      });
+      }) as any;
+
+      if (typeof tx === 'string') {
+        await client.waitForTransactionReceipt({ hash: tx as any });
+      }
+
       setClaimStatus('Rewards claimed successfully on studionet!');
+      fetchPaperData(0);
     } catch (err: any) {
       setClaimStatus(`Claim failed: ${err?.message || 'Transaction error'}`);
     } finally {
@@ -80,8 +95,9 @@ export const PaperDetail: React.FC<PaperDetailProps> = ({ paperId, account, onNa
 
   if (loading) {
     return (
-      <div className="p-12 text-center text-slate-400 font-mono text-sm">
-        Loading paper #{paperId} directly from GenLayer Studionet RPC...
+      <div className="p-12 text-center text-slate-400 font-mono text-sm space-y-2">
+        <RefreshCw className="w-6 h-6 mx-auto animate-spin text-teal-400" />
+        <div>Querying `get_paper(#{paperId})` directly from GenLayer Studionet RPC...</div>
       </div>
     );
   }
@@ -90,16 +106,27 @@ export const PaperDetail: React.FC<PaperDetailProps> = ({ paperId, account, onNa
     return (
       <div className="max-w-2xl mx-auto space-y-6 text-center p-12 bg-slate-900 rounded-3xl border border-slate-800">
         <AlertTriangle className="w-12 h-12 text-amber-400 mx-auto" />
-        <h2 className="text-xl font-bold text-slate-100">Paper #{paperId} Not Found on Chain</h2>
-        <p className="text-xs text-slate-400">
-          This paper ID has not been registered on contract <code className="text-teal-400 font-mono">{CONTRACT_ADDRESS.slice(0, 10)}...</code> yet.
+        <h2 className="text-xl font-bold text-slate-100">Paper #{paperId} Not Finalized or Found Yet</h2>
+        <p className="text-xs text-slate-400 max-w-md mx-auto leading-relaxed">
+          The transaction to create Paper #{paperId} may still be confirming on GenLayer Studionet, or this paper ID does not exist on contract <code className="text-teal-400 font-mono">{CONTRACT_ADDRESS.slice(0, 10)}...</code>.
         </p>
-        <button
-          onClick={() => onNavigate('home')}
-          className="px-6 py-2.5 rounded-xl bg-teal-500/20 text-teal-300 border border-teal-500/30 text-xs font-semibold hover:bg-teal-500/30 transition"
-        >
-          Return to Preprints List
-        </button>
+
+        <div className="flex justify-center space-x-3">
+          <button
+            onClick={() => fetchPaperData(2)}
+            className="flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-teal-500 to-emerald-500 text-slate-950 text-xs font-bold shadow-lg shadow-teal-500/20 hover:opacity-90 transition"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            <span>Re-query Studionet</span>
+          </button>
+
+          <button
+            onClick={() => onNavigate('home')}
+            className="px-5 py-2.5 rounded-xl bg-slate-800 text-slate-300 text-xs font-semibold hover:bg-slate-700 transition"
+          >
+            Return to Preprints List
+          </button>
+        </div>
       </div>
     );
   }

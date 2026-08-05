@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Send, ShieldAlert, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Send, ShieldAlert, CheckCircle, Loader2 } from 'lucide-react';
 import { makeClient, CONTRACT_ADDRESS } from '../lib/client';
 
 interface SubmitReviewProps {
@@ -13,6 +13,7 @@ export const SubmitReview: React.FC<SubmitReviewProps> = ({ paperId, account, on
   const [confidence, setConfidence] = useState(80);
   const [reviewUrl, setReviewUrl] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [stepMsg, setStepMsg] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
@@ -28,18 +29,24 @@ export const SubmitReview: React.FC<SubmitReviewProps> = ({ paperId, account, on
     }
 
     setSubmitting(true);
+    setStepMsg('Signing transaction in MetaMask...');
     setError(null);
 
     try {
       const client = makeClient(account);
       const stakeValue = BigInt(20) * BigInt(10**18); // 20 GEN
 
-      await client.writeContract({
+      const tx = await client.writeContract({
         address: CONTRACT_ADDRESS,
         functionName: 'submit_review',
         args: [paperId, verdict, confidence, reviewUrl.trim()],
         value: stakeValue,
-      });
+      }) as any;
+
+      if (typeof tx === 'string') {
+        setStepMsg('Waiting for Studionet block confirmation...');
+        await client.waitForTransactionReceipt({ hash: tx as any });
+      }
 
       setSubmitting(false);
       setSuccess(true);
@@ -156,13 +163,20 @@ export const SubmitReview: React.FC<SubmitReviewProps> = ({ paperId, account, on
               </div>
             </div>
 
+            {submitting && stepMsg && (
+              <div className="p-3 rounded-xl bg-slate-950 border border-teal-500/30 text-xs text-teal-300 flex items-center space-x-2 font-mono">
+                <Loader2 className="w-4 h-4 animate-spin flex-shrink-0" />
+                <span>{stepMsg}</span>
+              </div>
+            )}
+
             <button
               type="submit"
               disabled={submitting || !account}
               className="w-full py-3.5 rounded-xl bg-gradient-to-r from-teal-500 to-emerald-500 text-slate-950 font-bold text-sm hover:opacity-90 transition disabled:opacity-50 flex items-center justify-center space-x-2 shadow-lg shadow-teal-500/20"
             >
               <Send className="w-4 h-4" />
-              <span>{submitting ? 'Submitting Review...' : 'Submit & Stake 20 GEN'}</span>
+              <span>{submitting ? 'Processing Transaction...' : 'Submit & Stake 20 GEN'}</span>
             </button>
           </form>
         )}
