@@ -21,7 +21,7 @@ STATE_FAILED = "FAILED"
 @allow_storage
 @dataclass
 class Review:
-    reviewer: Address
+    reviewer: str
     verdict: str
     confidence: u8
     review_url: str
@@ -33,7 +33,7 @@ class Review:
 @allow_storage
 @dataclass
 class Paper:
-    author: Address
+    author: str
     title: str
     field: str
     url: str
@@ -205,7 +205,7 @@ class Contract(gl.Contract):
         paper_id_str = str(self.next_paper_id)
 
         self.papers[paper_id_str] = Paper(
-            author=_to_address(gl.message.sender_address),
+            author=_addr_str(gl.message.sender_address),
             title=title.strip(),
             field=field.strip(),
             url=clean_url,
@@ -258,7 +258,7 @@ class Contract(gl.Contract):
         _require(len(r_ids) < int(self.max_reviewers), "max reviewers reached")
 
         self.reviews[paper_id_str][reviewer_id] = Review(
-            reviewer=_to_address(gl.message.sender_address),
+            reviewer=reviewer_id,
             verdict=verdict,
             confidence=u8(confidence),
             review_url=review_url.strip(),
@@ -437,9 +437,9 @@ class Contract(gl.Contract):
         for rid in r_ids:
             r = self.reviews[paper_id_str][rid]
             if r.aligned:
-                rep.bump(r.reviewer, i256(5))
+                rep.bump(_to_address(r.reviewer), i256(5))
             else:
-                rep.bump(r.reviewer, i256(-3))
+                rep.bump(_to_address(r.reviewer), i256(-3))
 
         paper.ai_verdict = str(ai.get("verdict", "REJECT"))
         paper.ai_rigor = u8(max(0, min(100, rigor)))
@@ -456,10 +456,10 @@ class Contract(gl.Contract):
         paper = self.papers[paper_id_str]
 
         if paper.state == STATE_FAILED:
-            if gl.message.sender_address == paper.author and not paper.author_claimed:
+            if _addr_str(gl.message.sender_address) == paper.author and not paper.author_claimed:
                 paper.author_claimed = True
                 self.papers[paper_id_str] = paper
-                gl.get_contract_at(paper.author).emit_transfer(value=u256(paper.author_stake))
+                gl.get_contract_at(_to_address(paper.author)).emit_transfer(value=u256(paper.author_stake))
                 return
 
             caller_id = _addr_str(gl.message.sender_address)
@@ -478,12 +478,12 @@ class Contract(gl.Contract):
         avg = (int(paper.ai_rigor) + int(paper.ai_novelty) + int(paper.ai_reproduc)) // 3
         author_passed = avg >= int(self.pass_threshold_avg)
 
-        if gl.message.sender_address == paper.author:
+        if _addr_str(gl.message.sender_address) == paper.author:
             _require(not paper.author_claimed, "author payout already claimed")
             _require(author_passed, "author failed review threshold, stake forfeited")
             paper.author_claimed = True
             self.papers[paper_id_str] = paper
-            gl.get_contract_at(paper.author).emit_transfer(value=u256(paper.author_stake))
+            gl.get_contract_at(_to_address(paper.author)).emit_transfer(value=u256(paper.author_stake))
             return
 
         caller_id = _addr_str(gl.message.sender_address)
@@ -518,7 +518,7 @@ class Contract(gl.Contract):
 
         return {
             "id": paper_id_str,
-            "author": _addr_str(p.author),
+            "author": p.author,
             "title": p.title,
             "field": p.field,
             "url": p.url,
@@ -544,7 +544,7 @@ class Contract(gl.Contract):
         r = self.reviews[paper_id_str][reviewer_id]
         return {
             "paper_id": paper_id_str,
-            "reviewer": _addr_str(r.reviewer),
+            "reviewer": r.reviewer,
             "verdict": r.verdict,
             "confidence": int(r.confidence),
             "review_url": r.review_url,
