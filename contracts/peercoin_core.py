@@ -58,11 +58,29 @@ class IReputation:
         ...
 
 
-def _addr_str(addr: Address) -> str:
+def _to_address(val: typing.Any) -> Address:
+    if isinstance(val, Address):
+        return val
+    if isinstance(val, int):
+        h = hex(val)
+        if len(h) % 2 != 0:
+            h = "0x0" + h[2:]
+        return Address(h)
+    return Address(str(val))
+
+
+def _addr_str(addr: typing.Any) -> str:
     try:
-        return addr.as_hex
+        if hasattr(addr, "as_hex"):
+            return addr.as_hex
     except Exception:
-        return str(addr)
+        pass
+    if isinstance(addr, int):
+        h = hex(addr)
+        if len(h) % 2 != 0:
+            h = "0x0" + h[2:]
+        return h
+    return str(addr)
 
 
 def _require(cond: bool, msg: str):
@@ -161,8 +179,8 @@ class Contract(gl.Contract):
         review_window_secs: bigint,
         pass_threshold_avg: u8,
     ):
-        self.admin = gl.message.sender_address
-        self.reputation = reputation_addr
+        self.admin = _to_address(gl.message.sender_address)
+        self.reputation = _to_address(reputation_addr)
         self.author_stake_amount = author_stake
         self.reviewer_stake_amount = reviewer_stake
         self.min_reviewers = min_reviewers
@@ -185,7 +203,7 @@ class Contract(gl.Contract):
         empty_reviewers = gl.storage.inmem_allocate(DynArray[str])
 
         self.papers[paper_id_str] = Paper(
-            author=gl.message.sender_address,
+            author=_to_address(gl.message.sender_address),
             title=title.strip(),
             field=field.strip(),
             url=clean_url,
@@ -237,7 +255,7 @@ class Contract(gl.Contract):
         _require(len(paper.reviewer_ids) < int(self.max_reviewers), "max reviewers reached")
 
         self.reviews[paper_id_str][reviewer_id] = Review(
-            reviewer=gl.message.sender_address,
+            reviewer=_to_address(gl.message.sender_address),
             verdict=verdict,
             confidence=u8(confidence),
             review_url=review_url.strip(),
