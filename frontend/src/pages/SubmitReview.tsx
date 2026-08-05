@@ -31,14 +31,6 @@ export const SubmitReview: React.FC<SubmitReviewProps> = ({ paperId, account, on
     setError(null);
 
     try {
-      if (CONTRACT_ADDRESS === '0x0000000000000000000000000000000000000000') {
-        setTimeout(() => {
-          setSubmitting(false);
-          setSuccess(true);
-        }, 1200);
-        return;
-      }
-
       const client = makeClient(account);
       const stakeValue = BigInt(20) * BigInt(10**18); // 20 GEN
 
@@ -53,7 +45,7 @@ export const SubmitReview: React.FC<SubmitReviewProps> = ({ paperId, account, on
       setSuccess(true);
     } catch (err: any) {
       console.error(err);
-      setError(err?.message || 'Transaction failed. Check console.');
+      setError(err?.message || 'Transaction failed on GenLayer Studionet. Check wallet balance or console.');
       setSubmitting(false);
     }
   };
@@ -71,7 +63,7 @@ export const SubmitReview: React.FC<SubmitReviewProps> = ({ paperId, account, on
       <div className="p-8 rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl">
         <h2 className="text-2xl font-bold text-slate-100 mb-2">Submit Human Peer Review</h2>
         <p className="text-sm text-slate-400 mb-6 leading-relaxed">
-          Reviewers stake <strong className="text-teal-400 font-mono">20 GEN</strong>. If your verdict matches the GenLayer AI jury outcome, you earn back your stake plus a share of non-aligned reviewer stakes and +5 Reputation points.
+          Reviewers stake <strong className="text-teal-400 font-mono">20 GEN</strong> on GenLayer Studionet. If your verdict matches the GenLayer AI jury outcome, you earn back your stake plus a share of non-aligned reviewer stakes and +5 Reputation points.
         </p>
 
         {error && (
@@ -84,7 +76,7 @@ export const SubmitReview: React.FC<SubmitReviewProps> = ({ paperId, account, on
         {success ? (
           <div className="p-6 text-center rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 space-y-4">
             <CheckCircle className="w-12 h-12 mx-auto" />
-            <h3 className="text-lg font-bold text-slate-100">Review Submitted & Staked!</h3>
+            <h3 className="text-lg font-bold text-slate-100">Review Submitted & Staked on Studionet!</h3>
             <p className="text-xs text-slate-300">
               Your review is stored on-chain. When the AI jury is triggered, alignment will be evaluated.
             </p>

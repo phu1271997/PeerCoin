@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, ExternalLink, UserCheck, Play, Award } from 'lucide-react';
+import { ArrowLeft, ExternalLink, UserCheck, Play, Award, AlertTriangle } from 'lucide-react';
 import { makeClient, CONTRACT_ADDRESS } from '../lib/client';
 import { VerdictCard } from '../components/VerdictCard';
 
@@ -13,6 +13,7 @@ export const PaperDetail: React.FC<PaperDetailProps> = ({ paperId, account, onNa
   const [paper, setPaper] = useState<any>(null);
   const [reviews, setReviews] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [claiming, setClaiming] = useState(false);
   const [claimStatus, setClaimStatus] = useState<string | null>(null);
 
@@ -22,49 +23,8 @@ export const PaperDetail: React.FC<PaperDetailProps> = ({ paperId, account, onNa
 
   const fetchPaperData = async () => {
     setLoading(true);
+    setError(null);
     try {
-      if (CONTRACT_ADDRESS === '0x0000000000000000000000000000000000000000') {
-        setPaper({
-          id: paperId,
-          title: 'Zero-Knowledge Proofs for Autonomous AI Agent Consensus',
-          field: 'cs',
-          author: '0x71C7656EC7ab88b098defB751B7401B5f6d8976F',
-          url: 'https://arxiv.org/abs/2401.00001',
-          abstract: 'We present a novel protocol integrating cryptographic ZK-rollups with Optimistic Democracy AI consensus to verify non-deterministic AI agent execution.',
-          author_stake: '100000000000000000000',
-          bounty_pool: '500000000000000000000',
-          state: 'FINALIZED',
-          reviewer_ids: ['0x1111111111111111111111111111111111111111', '0x2222222222222222222222222222222222222222'],
-          ai_verdict: 'ACCEPT',
-          ai_rigor: 88,
-          ai_novelty: 92,
-          ai_reproduc: 85,
-          ai_reason: 'The mathematical proofs are sound, threats to validity are acknowledged, and reproduction code is hosted on GitHub.',
-        });
-        setReviews([
-          {
-            reviewer: '0x1111111111111111111111111111111111111111',
-            verdict: 'ACCEPT',
-            confidence: 90,
-            review_url: 'https://gist.github.com/review1',
-            stake: '20000000000000000000',
-            aligned: true,
-            claimed: false,
-          },
-          {
-            reviewer: '0x2222222222222222222222222222222222222222',
-            verdict: 'WEAK_REJECT',
-            confidence: 60,
-            review_url: 'https://gist.github.com/review2',
-            stake: '20000000000000000000',
-            aligned: false,
-            claimed: false,
-          }
-        ]);
-        setLoading(false);
-        return;
-      }
-
       const client = makeClient(account || '0x0000000000000000000000000000000000000000');
       const p = await client.readContract({
         address: CONTRACT_ADDRESS,
@@ -90,8 +50,9 @@ export const PaperDetail: React.FC<PaperDetailProps> = ({ paperId, account, onNa
         }
         setReviews(revList);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      setError(err?.message || `Paper #${paperId} not found on GenLayer Studionet contract.`);
     } finally {
       setLoading(false);
     }
@@ -102,15 +63,13 @@ export const PaperDetail: React.FC<PaperDetailProps> = ({ paperId, account, onNa
     setClaiming(true);
     setClaimStatus(null);
     try {
-      if (CONTRACT_ADDRESS !== '0x0000000000000000000000000000000000000000') {
-        const client = makeClient(account);
-        await client.writeContract({
-          address: CONTRACT_ADDRESS,
-          functionName: 'claim',
-          args: [paperId],
-          value: 0n,
-        });
-      }
+      const client = makeClient(account);
+      await client.writeContract({
+        address: CONTRACT_ADDRESS,
+        functionName: 'claim',
+        args: [paperId],
+        value: 0n,
+      });
       setClaimStatus('Rewards claimed successfully on studionet!');
     } catch (err: any) {
       setClaimStatus(`Claim failed: ${err?.message || 'Transaction error'}`);
@@ -119,10 +78,28 @@ export const PaperDetail: React.FC<PaperDetailProps> = ({ paperId, account, onNa
     }
   };
 
-  if (loading || !paper) {
+  if (loading) {
     return (
       <div className="p-12 text-center text-slate-400 font-mono text-sm">
-        Loading paper details from studionet...
+        Loading paper #{paperId} directly from GenLayer Studionet RPC...
+      </div>
+    );
+  }
+
+  if (error || !paper) {
+    return (
+      <div className="max-w-2xl mx-auto space-y-6 text-center p-12 bg-slate-900 rounded-3xl border border-slate-800">
+        <AlertTriangle className="w-12 h-12 text-amber-400 mx-auto" />
+        <h2 className="text-xl font-bold text-slate-100">Paper #{paperId} Not Found on Chain</h2>
+        <p className="text-xs text-slate-400">
+          This paper ID has not been registered on contract <code className="text-teal-400 font-mono">{CONTRACT_ADDRESS.slice(0, 10)}...</code> yet.
+        </p>
+        <button
+          onClick={() => onNavigate('home')}
+          className="px-6 py-2.5 rounded-xl bg-teal-500/20 text-teal-300 border border-teal-500/30 text-xs font-semibold hover:bg-teal-500/30 transition"
+        >
+          Return to Preprints List
+        </button>
       </div>
     );
   }
@@ -261,7 +238,7 @@ export const PaperDetail: React.FC<PaperDetailProps> = ({ paperId, account, onNa
 
         {reviews.length === 0 ? (
           <div className="p-8 text-center bg-slate-900/40 rounded-2xl border border-slate-800 text-slate-400 text-sm">
-            No human reviews submitted yet. Be the first reviewer to stake 20 GEN!
+            No human reviews submitted yet on Studionet. Be the first reviewer to stake 20 GEN!
           </div>
         ) : (
           <div className="space-y-4">

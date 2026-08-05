@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { PlusCircle, Search, Filter, ShieldCheck, ChevronRight } from 'lucide-react';
+import { PlusCircle, Search, Filter, ShieldCheck, ChevronRight, RefreshCw, Cpu } from 'lucide-react';
 import { makeClient, CONTRACT_ADDRESS } from '../lib/client';
 
 interface HomeProps {
@@ -12,6 +12,8 @@ export const Home: React.FC<HomeProps> = ({ account, onNavigate }) => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [fieldFilter, setFieldFilter] = useState('ALL');
+  const [totalOnChain, setTotalOnChain] = useState<number>(0);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchPapers();
@@ -19,46 +21,8 @@ export const Home: React.FC<HomeProps> = ({ account, onNavigate }) => {
 
   const fetchPapers = async () => {
     setLoading(true);
+    setFetchError(null);
     try {
-      if (CONTRACT_ADDRESS === '0x0000000000000000000000000000000000000000') {
-        setPapers([
-          {
-            id: '0',
-            title: 'Zero-Knowledge Proofs for Autonomous AI Agent Consensus',
-            field: 'cs',
-            author: '0x71C7656EC7ab88b098defB751B7401B5f6d8976F',
-            url: 'https://arxiv.org/abs/2401.00001',
-            abstract: 'We present a novel protocol integrating cryptographic ZK-rollups with Optimistic Democracy AI consensus to verify non-deterministic AI agent execution.',
-            bounty_pool: '500000000000000000000',
-            state: 'FINALIZED',
-            reviewer_ids: ['0x111', '0x222', '0x333'],
-            ai_verdict: 'ACCEPT',
-            ai_rigor: 88,
-            ai_novelty: 92,
-            ai_reproduc: 85,
-            ai_reason: 'Methodology is mathematically sound and reproducibility artifacts are publicly hosted on GitHub.',
-          },
-          {
-            id: '1',
-            title: 'Empirical Analysis of LLM Hallucinations in On-Chain Oracles',
-            field: 'biology',
-            author: '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC',
-            url: 'https://biorxiv.org/content/10.1101/2024.01.002',
-            abstract: 'Evaluating multi-validator LLM consensus against single-agent oracle feeds across 500 benchmarked Web3 adjudications.',
-            bounty_pool: '200000000000000000000',
-            state: 'REVIEWING',
-            reviewer_ids: ['0x111', '0x444'],
-            ai_verdict: '',
-            ai_rigor: 0,
-            ai_novelty: 0,
-            ai_reproduc: 0,
-            ai_reason: '',
-          }
-        ]);
-        setLoading(false);
-        return;
-      }
-
       const client = makeClient(account || '0x0000000000000000000000000000000000000000');
       const res = await client.readContract({
         address: CONTRACT_ADDRESS,
@@ -66,20 +30,27 @@ export const Home: React.FC<HomeProps> = ({ account, onNavigate }) => {
         args: [0, 50],
       }) as any;
 
-      if (res && res.items) {
-        setPapers(res.items);
+      if (res) {
+        setTotalOnChain(typeof res.total === 'number' ? res.total : 0);
+        if (Array.isArray(res.items)) {
+          setPapers(res.items);
+        } else {
+          setPapers([]);
+        }
       }
-    } catch (e) {
-      console.error("Error fetching papers:", e);
+    } catch (e: any) {
+      console.error("Error fetching papers from GenLayer Studionet:", e);
+      setFetchError(e?.message || "Could not connect to GenLayer Studionet RPC.");
+      setPapers([]);
     } finally {
       setLoading(false);
     }
   };
 
   const filtered = papers.filter(p => {
-    const matchesSearch = p.title.toLowerCase().includes(search.toLowerCase()) ||
-                          p.field.toLowerCase().includes(search.toLowerCase());
-    const matchesField = fieldFilter === 'ALL' || p.field.toLowerCase() === fieldFilter.toLowerCase();
+    const matchesSearch = (p.title || '').toLowerCase().includes(search.toLowerCase()) ||
+                          (p.field || '').toLowerCase().includes(search.toLowerCase());
+    const matchesField = fieldFilter === 'ALL' || (p.field || '').toLowerCase() === fieldFilter.toLowerCase();
     return matchesSearch && matchesField;
   });
 
@@ -88,10 +59,17 @@ export const Home: React.FC<HomeProps> = ({ account, onNavigate }) => {
       {/* Hero Banner */}
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-teal-950/40 to-slate-900 border border-teal-500/20 p-8 md:p-12 shadow-2xl">
         <div className="relative z-10 max-w-3xl">
-          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-teal-500/10 border border-teal-500/30 text-teal-400 text-xs font-semibold mb-4">
-            <ShieldCheck className="w-4 h-4" />
-            <span>On-Chain Peer Review Economy</span>
+          <div className="flex flex-wrap items-center gap-2 mb-4">
+            <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-teal-500/10 border border-teal-500/30 text-teal-400 text-xs font-semibold">
+              <ShieldCheck className="w-4 h-4" />
+              <span>GenLayer Studionet Direct Sync</span>
+            </div>
+            <div className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full bg-slate-950 border border-slate-800 text-slate-300 font-mono text-xs">
+              <Cpu className="w-3.5 h-3.5 text-teal-400" />
+              <span>Contract: {CONTRACT_ADDRESS.slice(0, 8)}...{CONTRACT_ADDRESS.slice(-6)}</span>
+            </div>
           </div>
+
           <h2 className="text-3xl md:text-5xl font-extrabold text-slate-100 tracking-tight leading-tight mb-4">
             Skin-in-the-game Peer Review with <span className="bg-gradient-to-r from-teal-400 to-emerald-300 bg-clip-text text-transparent">AI Jury Consensus</span>
           </h2>
@@ -131,7 +109,7 @@ export const Home: React.FC<HomeProps> = ({ account, onNavigate }) => {
           />
         </div>
 
-        <div className="flex items-center space-x-2 w-full md:w-auto overflow-x-auto pb-2 md:pb-0">
+        <div className="flex items-center space-x-3 w-full md:w-auto overflow-x-auto pb-2 md:pb-0">
           <Filter className="w-4 h-4 text-slate-400 mr-1" />
           {['ALL', 'cs', 'biology', 'econ', 'physics'].map((f) => (
             <button
@@ -146,22 +124,42 @@ export const Home: React.FC<HomeProps> = ({ account, onNavigate }) => {
               {f}
             </button>
           ))}
+
+          <button
+            onClick={fetchPapers}
+            className="p-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-teal-400 transition"
+            title="Refresh Studionet Data"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          </button>
         </div>
       </div>
 
+      {fetchError && (
+        <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-mono">
+          Studionet Sync Warning: {fetchError}
+        </div>
+      )}
+
       {/* Preprint Grid */}
       {loading ? (
-        <div className="p-12 text-center text-slate-400 font-mono text-sm">
-          Loading preprints from GenLayer studionet...
+        <div className="p-12 text-center text-slate-400 font-mono text-sm space-y-2">
+          <RefreshCw className="w-6 h-6 mx-auto animate-spin text-teal-400" />
+          <div>Querying `list_papers` on GenLayer Studionet ({CONTRACT_ADDRESS.slice(0, 10)}...)...</div>
         </div>
       ) : filtered.length === 0 ? (
-        <div className="p-12 text-center bg-slate-900/50 rounded-2xl border border-slate-800">
-          <p className="text-slate-400 text-sm mb-4">No preprints found matching your query.</p>
+        <div className="p-12 text-center bg-slate-900/50 rounded-2xl border border-slate-800 space-y-4">
+          <div className="text-slate-300 text-base font-semibold">
+            No preprints published on Studionet yet ({totalOnChain} total on-chain).
+          </div>
+          <p className="text-xs text-slate-400 max-w-md mx-auto leading-relaxed">
+            Click the button below to submit a new preprint, stake 100 GEN on GenLayer Studionet, and view the live created paper immediately!
+          </p>
           <button
             onClick={() => onNavigate('submit')}
-            className="px-4 py-2 rounded-lg bg-teal-500/20 text-teal-400 border border-teal-500/30 text-xs font-semibold hover:bg-teal-500/30 transition"
+            className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-teal-500 to-emerald-500 text-slate-950 text-xs font-bold shadow-lg shadow-teal-500/20 hover:opacity-90 transition"
           >
-            Be the first author to submit
+            Submit First Preprint on Studionet
           </button>
         </div>
       ) : (
@@ -179,9 +177,13 @@ export const Home: React.FC<HomeProps> = ({ account, onNavigate }) => {
               >
                 <div>
                   <div className="flex items-center justify-between gap-2 mb-3">
-                    <span className="px-2.5 py-0.5 rounded-full bg-slate-800 text-teal-400 text-xs font-mono font-semibold uppercase">
-                      {paper.field}
-                    </span>
+                    <div className="flex items-center space-x-2">
+                      <span className="px-2.5 py-0.5 rounded-full bg-slate-800 text-teal-400 text-xs font-mono font-semibold uppercase">
+                        {paper.field}
+                      </span>
+                      <span className="text-[11px] text-slate-500 font-mono">#{paper.id}</span>
+                    </div>
+
                     <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${
                       isFinalized
                         ? isAccept ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
@@ -219,7 +221,7 @@ export const Home: React.FC<HomeProps> = ({ account, onNavigate }) => {
                   </div>
 
                   <span className="text-teal-400 group-hover:translate-x-1 transition flex items-center font-medium">
-                    View Paper <ChevronRight className="w-4 h-4 ml-0.5" />
+                    View Paper #{paper.id} <ChevronRight className="w-4 h-4 ml-0.5" />
                   </span>
                 </div>
               </div>

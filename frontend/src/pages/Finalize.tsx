@@ -24,14 +24,6 @@ export const Finalize: React.FC<FinalizeProps> = ({ paperId, account, onNavigate
     setError(null);
 
     try {
-      if (CONTRACT_ADDRESS === '0x0000000000000000000000000000000000000000') {
-        setTimeout(() => {
-          setExecuting(false);
-          setSuccess(true);
-        }, 3000);
-        return;
-      }
-
       const client = makeClient(account);
       await client.writeContract({
         address: CONTRACT_ADDRESS,

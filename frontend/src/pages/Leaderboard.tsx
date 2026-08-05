@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Trophy, Medal, Star } from 'lucide-react';
-import { REPUTATION_ADDRESS } from '../lib/client';
+import { Trophy, Medal, Star, Cpu } from 'lucide-react';
+import { makeClient, CONTRACT_ADDRESS, REPUTATION_ADDRESS } from '../lib/client';
 
 interface LeaderboardProps {
   account: `0x${string}` | null;
@@ -18,26 +18,50 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ account }) => {
   const fetchLeaderboard = async () => {
     setLoading(true);
     try {
-      if (REPUTATION_ADDRESS === '0x0000000000000000000000000000000000000000') {
-        setReviewers([
-          { address: '0x1111111111111111111111111111111111111111', score: 25, alignedCount: 5 },
-          { address: '0x3333333333333333333333333333333333333333', score: 15, alignedCount: 3 },
-          { address: '0x4444444444444444444444444444444444444444', score: 10, alignedCount: 2 },
-          { address: '0x2222222222222222222222222222222222222222', score: -3, alignedCount: 0 },
-        ]);
-        setLoading(false);
-        return;
+      const client = makeClient(account || '0x0000000000000000000000000000000000000000');
+      
+      // 1. Fetch papers to discover active reviewers
+      const res = await client.readContract({
+        address: CONTRACT_ADDRESS,
+        functionName: 'list_papers',
+        args: [0, 100],
+      }) as any;
+
+      const reviewerMap = new Map<string, { address: string; score: number; alignedCount: number }>();
+
+      if (res && Array.isArray(res.items)) {
+        for (const p of res.items) {
+          if (Array.isArray(p.reviewer_ids)) {
+            for (const rid of p.reviewer_ids) {
+              if (!reviewerMap.has(rid)) {
+                reviewerMap.set(rid, { address: rid, score: 0, alignedCount: 0 });
+              }
+            }
+          }
+        }
       }
 
-      setReviewers([
-        { address: '0x1111111111111111111111111111111111111111', score: 25, alignedCount: 5 },
-        { address: '0x3333333333333333333333333333333333333333', score: 15, alignedCount: 3 },
-        { address: '0x4444444444444444444444444444444444444444', score: 10, alignedCount: 2 },
-        { address: '0x2222222222222222222222222222222222222222', score: -3, alignedCount: 0 },
-      ]);
-      setLoading(false);
+      // 2. Query ReputationLedger contract on studionet for each reviewer
+      const reviewerList = Array.from(reviewerMap.values());
+      for (const r of reviewerList) {
+        try {
+          const score = await client.readContract({
+            address: REPUTATION_ADDRESS,
+            functionName: 'score',
+            args: [r.address],
+          });
+          r.score = typeof score === 'number' ? score : parseInt(String(score || 0));
+        } catch (e) {
+          console.error(`Error querying reputation for ${r.address}:`, e);
+        }
+      }
+
+      reviewerList.sort((a, b) => b.score - a.score);
+      setReviewers(reviewerList);
     } catch (e) {
       console.error(e);
+      setReviewers([]);
+    } finally {
       setLoading(false);
     }
   };
@@ -45,19 +69,30 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ account }) => {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <div className="p-8 rounded-3xl bg-slate-900 border border-slate-800 shadow-2xl space-y-3">
-        <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 text-xs font-semibold">
-          <Trophy className="w-4 h-4" />
-          <span>Reviewer Reputation Ledger</span>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 text-xs font-semibold">
+            <Trophy className="w-4 h-4" />
+            <span>Reviewer Reputation Ledger</span>
+          </div>
+          <div className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full bg-slate-950 border border-slate-800 text-slate-300 font-mono text-xs">
+            <Cpu className="w-3.5 h-3.5 text-teal-400" />
+            <span>Ledger: {REPUTATION_ADDRESS.slice(0, 8)}...</span>
+          </div>
         </div>
+
         <h1 className="text-3xl font-extrabold text-slate-100">Reviewer Quality Leaderboard</h1>
         <p className="text-sm text-slate-400 leading-relaxed">
-          Reputation scores are calculated on-chain via the <code className="text-teal-400">ReputationLedger</code> contract. Reviewers earn <span className="text-emerald-400 font-mono font-bold">+5 points</span> when aligned with the GenLayer AI Jury and lose <span className="text-rose-400 font-mono font-bold">-3 points</span> when misaligned.
+          Reputation scores are calculated on-chain via the <code className="text-teal-400 font-mono">ReputationLedger</code> contract. Reviewers earn <span className="text-emerald-400 font-mono font-bold">+5 points</span> when aligned with the GenLayer AI Jury and lose <span className="text-rose-400 font-mono font-bold">-3 points</span> when misaligned.
         </p>
       </div>
 
       {loading ? (
         <div className="p-12 text-center text-slate-400 font-mono text-sm">
-          Loading leaderboard from ReputationLedger...
+          Querying `ReputationLedger` on GenLayer Studionet...
+        </div>
+      ) : reviewers.length === 0 ? (
+        <div className="p-12 text-center bg-slate-900/50 rounded-2xl border border-slate-800 text-slate-400 text-sm">
+          No reviewer reputation scores recorded on Studionet yet. Submit reviews and trigger AI Jury adjudication to earn points!
         </div>
       ) : (
         <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl overflow-hidden">
@@ -81,7 +116,6 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ account }) => {
 
                     <div>
                       <div className="font-mono text-sm font-semibold text-slate-200">{r.address}</div>
-                      <div className="text-xs text-slate-500">{r.alignedCount} Aligned Reviews</div>
                     </div>
                   </div>
 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Send, ShieldAlert, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Send, ShieldAlert, CheckCircle, FileText } from 'lucide-react';
 import { makeClient, CONTRACT_ADDRESS } from '../lib/client';
 
 interface SubmitProps {
@@ -15,7 +15,8 @@ export const Submit: React.FC<SubmitProps> = ({ account, onNavigate }) => {
   const [bountyTopup, setBountyTopup] = useState('10');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [successId, setSuccessId] = useState<string | null>(null);
+  const [createdPaperId, setCreatedPaperId] = useState<string | null>(null);
+  const [txHash, setTxHash] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,14 +34,6 @@ export const Submit: React.FC<SubmitProps> = ({ account, onNavigate }) => {
     setError(null);
 
     try {
-      if (CONTRACT_ADDRESS === '0x0000000000000000000000000000000000000000') {
-        setTimeout(() => {
-          setSubmitting(false);
-          setSuccessId('0');
-        }, 1500);
-        return;
-      }
-
       const client = makeClient(account);
       const authorStake = BigInt(100) * BigInt(10**18); // 100 GEN
       const topup = BigInt(Math.max(0, parseFloat(bountyTopup || '0'))) * BigInt(10**18);
@@ -51,13 +44,31 @@ export const Submit: React.FC<SubmitProps> = ({ account, onNavigate }) => {
         functionName: 'submit_paper',
         args: [title.trim(), field.trim(), url.trim(), abstract.trim()],
         value: totalValue,
-      });
+      }) as any;
+
+      setTxHash(typeof tx === 'string' ? tx : null);
+
+      try {
+        const res = await client.readContract({
+          address: CONTRACT_ADDRESS,
+          functionName: 'list_papers',
+          args: [0, 100],
+        }) as any;
+
+        if (res && typeof res.total === 'number' && res.total > 0) {
+          const newId = (res.total - 1).toString();
+          setCreatedPaperId(newId);
+        } else {
+          setCreatedPaperId('0');
+        }
+      } catch (e) {
+        setCreatedPaperId('0');
+      }
 
       setSubmitting(false);
-      setSuccessId(tx || '0');
     } catch (err: any) {
       console.error(err);
-      setError(err?.message || 'Transaction failed. Check console for details.');
+      setError(err?.message || 'Transaction failed on GenLayer Studionet. Check wallet balance or console.');
       setSubmitting(false);
     }
   };
@@ -75,7 +86,7 @@ export const Submit: React.FC<SubmitProps> = ({ account, onNavigate }) => {
       <div className="p-8 rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl">
         <h2 className="text-2xl font-bold text-slate-100 mb-2">Submit Preprint to PeerCoin</h2>
         <p className="text-sm text-slate-400 mb-6 leading-relaxed">
-          Authors stake <strong className="text-teal-400 font-mono">100 GEN</strong> as skin-in-the-game. If the GenLayer AI jury approves your methodology (score ≥ 60), your stake is returned. Otherwise, it is forfeited to the aligned reviewer bounty pool.
+          Authors stake <strong className="text-teal-400 font-mono">100 GEN</strong> on GenLayer Studionet. If the GenLayer AI jury approves your methodology (score ≥ 60), your stake is returned. Otherwise, it is forfeited to the aligned reviewer bounty pool.
         </p>
 
         {error && (
@@ -85,19 +96,41 @@ export const Submit: React.FC<SubmitProps> = ({ account, onNavigate }) => {
           </div>
         )}
 
-        {successId ? (
-          <div className="p-6 text-center rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 space-y-4">
-            <CheckCircle className="w-12 h-12 mx-auto" />
-            <h3 className="text-lg font-bold text-slate-100">Preprint Submitted Successfully!</h3>
-            <p className="text-xs text-slate-300">
-              Your paper is now registered on GenLayer studionet and open for peer reviews.
-            </p>
-            <button
-              onClick={() => onNavigate('paper', successId)}
-              className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-teal-500 to-emerald-500 text-slate-950 font-bold text-sm"
-            >
-              View Paper Details
-            </button>
+        {createdPaperId !== null ? (
+          <div className="p-6 text-center rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 space-y-5">
+            <CheckCircle className="w-14 h-14 mx-auto text-emerald-400 animate-bounce" />
+            
+            <div>
+              <h3 className="text-xl font-bold text-slate-100 mb-1">
+                Preprint #{createdPaperId} Published on GenLayer Studionet!
+              </h3>
+              <p className="text-xs text-slate-300">
+                Your paper has been written to smart contract <code className="text-teal-400 font-mono">{CONTRACT_ADDRESS.slice(0, 10)}...</code> on-chain.
+              </p>
+            </div>
+
+            {txHash && (
+              <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800 text-xs text-slate-400 font-mono break-all">
+                Transaction Hash: {txHash}
+              </div>
+            )}
+
+            <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
+              <button
+                onClick={() => onNavigate('paper', createdPaperId)}
+                className="flex items-center justify-center space-x-2 px-6 py-3 rounded-xl bg-gradient-to-r from-teal-500 to-emerald-500 text-slate-950 font-bold text-sm shadow-lg shadow-teal-500/20 hover:opacity-90 transition"
+              >
+                <FileText className="w-4 h-4" />
+                <span>View Created Preprint #{createdPaperId}</span>
+              </button>
+
+              <button
+                onClick={() => onNavigate('home')}
+                className="px-6 py-3 rounded-xl bg-slate-800 border border-slate-700 text-slate-200 font-semibold text-sm hover:bg-slate-700 transition"
+              >
+                Go to Homepage
+              </button>
+            </div>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-5">
@@ -158,7 +191,7 @@ export const Submit: React.FC<SubmitProps> = ({ account, onNavigate }) => {
                 className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-100 focus:outline-none focus:border-teal-500 font-mono"
               />
               <p className="text-[11px] text-slate-500 mt-1">
-                Must be an accessible web URL (`gl.nondet.web.render` reads this directly on-chain).
+                Must be an accessible web URL (`gl.nondet.web.render` reads this directly on-chain during AI consensus).
               </p>
             </div>
 
