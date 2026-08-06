@@ -32,13 +32,29 @@ export const Submit: React.FC<SubmitProps> = ({ account, onNavigate }) => {
     }
 
     setSubmitting(true);
-    setSubmitStep('Signing transaction in MetaMask...');
+    setSubmitStep('Reading current preprint count from Studionet...');
     setError(null);
 
     try {
       const client = makeClient(account);
-      const authorStake = BigInt(100) * BigInt(10**18); // 100 GEN
-      const topup = BigInt(Math.max(0, parseFloat(bountyTopup || '0'))) * BigInt(10**18);
+
+      // 1. Snapshot total BEFORE submit — used to detect whether state actually advanced.
+      let totalBefore = 0;
+      try {
+        const before = await client.readContract({
+          address: CONTRACT_ADDRESS,
+          functionName: 'list_papers',
+          args: [0, 1],
+        }) as any;
+        totalBefore = typeof before?.total === 'number' ? before.total : 0;
+      } catch (readErr) {
+        console.warn('pre-submit list_papers failed:', readErr);
+      }
+
+      // 2. Send the transaction.
+      setSubmitStep('Signing transaction in MetaMask...');
+      const authorStake = BigInt(100) * BigInt(10 ** 18); // 100 GEN
+      const topup = BigInt(Math.max(0, parseFloat(bountyTopup || '0'))) * BigInt(10 ** 18);
       const totalValue = authorStake + topup;
 
       const tx = await client.writeContract({
@@ -51,33 +67,55 @@ export const Submit: React.FC<SubmitProps> = ({ account, onNavigate }) => {
       const hashStr = typeof tx === 'string' ? tx : null;
       setTxHash(hashStr);
 
+      // 3. Wait for the receipt.
       if (hashStr) {
         setSubmitStep('Waiting for Studionet block confirmation & state finalization...');
         try {
           await client.waitForTransactionReceipt({ hash: hashStr as any });
         } catch (receiptErr) {
-          console.warn("waitForTransactionReceipt warning:", receiptErr);
+          console.warn('waitForTransactionReceipt warning:', receiptErr);
         }
       }
 
+      // 4. Poll list_papers.total for up to ~30s waiting for state to advance
+      //    beyond totalBefore. If it never advances → the tx reached FINALIZED
+      //    status but reverted inside the contract (UserError / out-of-gas /
+      //    validator disagreement). Surface a real error instead of a fake
+      //    success screen.
       setSubmitStep('Fetching newly created preprint ID from Studionet...');
-      try {
-        const res = await client.readContract({
-          address: CONTRACT_ADDRESS,
-          functionName: 'list_papers',
-          args: [0, 100],
-        }) as any;
-
-        if (res && typeof res.total === 'number' && res.total > 0) {
-          const newId = (res.total - 1).toString();
-          setCreatedPaperId(newId);
-        } else {
-          setCreatedPaperId('0');
+      let newTotal = totalBefore;
+      for (let attempt = 0; attempt < 10; attempt++) {
+        try {
+          const res = await client.readContract({
+            address: CONTRACT_ADDRESS,
+            functionName: 'list_papers',
+            args: [0, 200],
+          }) as any;
+          if (typeof res?.total === 'number' && res.total > totalBefore) {
+            newTotal = res.total;
+            break;
+          }
+        } catch (e) {
+          console.warn(`list_papers attempt ${attempt} failed:`, e);
         }
-      } catch (e) {
-        setCreatedPaperId('0');
+        await new Promise((r) => setTimeout(r, 3000));
       }
 
+      if (newTotal > totalBefore) {
+        const newId = (newTotal - 1).toString();
+        setCreatedPaperId(newId);
+        setSubmitting(false);
+        return;
+      }
+
+      // State did not advance — tx reverted despite reaching FINALIZED.
+      setError(
+        `Transaction ${hashStr ? hashStr.slice(0, 10) + '…' : ''} reached FINALIZED on Studionet but the contract reverted: no new paper was written. ` +
+        'Likely causes: duplicate URL (same URL already submitted), URL validation failed (must start with http:// or https://), ' +
+        'title / field / abstract exceeded length limits, or insufficient stake. ' +
+        'On revert GenLayer refunds gas — check MetaMask for the refund. ' +
+        'Please double-check inputs and retry.'
+      );
       setSubmitting(false);
     } catch (err: any) {
       console.error(err);

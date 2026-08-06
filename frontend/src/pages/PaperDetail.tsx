@@ -21,9 +21,11 @@ export const PaperDetail: React.FC<PaperDetailProps> = ({ paperId, account, onNa
     fetchPaperData();
   }, [paperId, account]);
 
-  const fetchPaperData = async (retriesLeft = 3) => {
-    setLoading(true);
-    setError(null);
+  const fetchPaperData = async (retriesLeft = 5) => {
+    if (retriesLeft === 5) {
+      setLoading(true);
+      setError(null);
+    }
     try {
       const client = makeClient(account || '0x0000000000000000000000000000000000000000');
       const p = await client.readContract({
@@ -50,20 +52,21 @@ export const PaperDetail: React.FC<PaperDetailProps> = ({ paperId, account, onNa
         }
         setReviews(revList);
       }
+      setLoading(false);
     } catch (err: any) {
-      console.error(err);
+      console.error(`get_paper(${paperId}) attempt failed, ${retriesLeft} retries left:`, err);
       if (retriesLeft > 0) {
-        // Transaction may be finalizing on Studionet, retry after 2 seconds
         setTimeout(() => {
           fetchPaperData(retriesLeft - 1);
-        }, 2000);
+        }, 3000);
         return;
       }
-      setError(err?.message || `Paper #${paperId} not found on GenLayer Studionet contract.`);
-    } finally {
-      if (retriesLeft <= 0) {
-        setLoading(false);
-      }
+      setError(
+        `Paper #${paperId} not found on contract ${CONTRACT_ADDRESS.slice(0, 10)}… after 5 retries. ` +
+        `Either the submit_paper transaction reverted (check the tx on the Explorer — a FINALIZED tx that reverted still consumes a nonce) ` +
+        `or this paper ID does not exist yet. Return to the preprints list to see all published papers.`
+      );
+      setLoading(false);
     }
   };
 
