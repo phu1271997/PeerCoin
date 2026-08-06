@@ -4,6 +4,13 @@ All notable changes to the PeerCoin project will be documented in this file. For
 
 ## [Unreleased]
 
+### Redeployment on studionet (v0.4) — u256/bigint arithmetic bug fixed
+- **Second root cause found** (distinct from the v0.3 timestamp fix): `gl.message.value` is typed `u256` (Annotated[int, size=32, unsigned]) in the current studionet runtime, not `bigint`. Subtracting a stored `bigint` from a `u256` raises TypeError, and on studionet a TypeError inside a `@gl.public.write.payable` method reverts the tx WITHOUT refunding `msg.value`. Verified against sdk.genlayer.com api reference: *"You cannot directly subtract a stored bigint from gl.message.value. Convert explicitly."* This bug shipped in every prior version — an extra 110 GEN got stuck in the v0.3 core `0xad494561EF28b7853778036a02DbADf190465732` when the user tested it, proving the timestamp fix alone was necessary-but-not-sufficient.
+- **Deployed v0.4** `PeerCoinCore` at `0xEcBb6500a9582A470Cd6f8A5BBd825Bf3d735Ae9`. Reputation ledger `0x0AEe9Fe2d39272eA73976Bcca4284EC6E9f1291E` unchanged; `set_core` re-linked.
+- **Added** `_msg_value_bi()` helper: `bigint(int(gl.message.value))`. `submit_paper`, `submit_review`, `sponsor_bounty` all coerce `msg.value` once at entry and operate purely in bigint space afterward.
+- **Verified** post-deploy via `get_config()` — stakes, thresholds, rep_addr, next_paper_id all correct.
+- **Total GEN permanently stuck across the debug cycle: 660 GEN** (220 v0.1 + 330 v0.2 + 110 v0.3). No admin withdraw path in any core — chalked up to debug cost.
+
 ### Redeployment on studionet (v0.3) — critical timestamp bug fixed
 - **Root cause found**: every submit_paper / finalize / claim tx on v0.1 and v0.2 was reverting inside the contract because `gl.block.timestamp` does not exist in the current studionet Python runtime (correct API is `gl.vm.get_timestamp()` returning a timezone-aware datetime). Verified against `sdk.genlayer.com/main/_static/ai/api.txt`. Studionet marked those txs FINALIZED but did not refund `msg.value`, so 550 GEN got stuck across the two failed cores (330 GEN in v0.2 `0x12f6…2710`, 220 GEN in v0.1 `0x7E4f…e346`). No admin withdraw path — permanently lost.
 - **Deployed v0.3** `PeerCoinCore` at `0xad494561EF28b7853778036a02DbADf190465732` with the timestamp fix and the new `get_config()` diagnostic view. Reputation ledger at `0x0AEe9Fe2d39272eA73976Bcca4284EC6E9f1291E` is unchanged; `set_core` re-linked to the new core.

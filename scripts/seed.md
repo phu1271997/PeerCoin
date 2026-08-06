@@ -4,7 +4,7 @@ Seed the contract with one demo preprint and two demo reviews so a first-time vi
 
 ## Pre-flight
 
-1. Confirm the deployed core address matches [.env.example](../.env.example) (`0xad494561EF28b7853778036a02DbADf190465732` at time of writing). If not, update `.env` and redeploy the frontend.
+1. Confirm the deployed core address matches [.env.example](../.env.example) (`0xEcBb6500a9582A470Cd6f8A5BBd825Bf3d735Ae9` at time of writing). If not, update `.env` and redeploy the frontend.
 2. Fund **three** studionet accounts (author + 2 reviewers) from the GenLayer Studio Accounts panel. Each needs at least 25 GEN; the author needs at least 105 GEN (100 stake + 5 buffer).
 3. Import all three private keys into MetaMask (or use three browser profiles).
 

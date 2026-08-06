@@ -35,14 +35,14 @@ This guide provides step-by-step instructions for deploying the PeerCoin Intelli
    - `pass_threshold_avg`: `60`
 4. Click **Deploy**.
 5. Click the deployment transaction and verify that **`Result: SUCCESS`**.
-6. Deployed Address: `0xad494561EF28b7853778036a02DbADf190465732`.
+6. Deployed Address: `0xEcBb6500a9582A470Cd6f8A5BBd825Bf3d735Ae9`.
 
 ---
 
 ## Step 3: Link Reputation Ledger to Core Contract
 
 1. In Studio, select the deployed `ReputationLedger` contract interface.
-2. Execute the `set_core(core_addr)` method, passing `0xad494561EF28b7853778036a02DbADf190465732`.
+2. Execute the `set_core(core_addr)` method, passing `0xEcBb6500a9582A470Cd6f8A5BBd825Bf3d735Ae9`.
 3. Confirm transaction execution.
 
 ---
@@ -50,4 +50,4 @@ This guide provides step-by-step instructions for deploying the PeerCoin Intelli
 ## Deployed Addresses Summary (Studionet)
 
 - `ReputationLedger`: `0x0AEe9Fe2d39272eA73976Bcca4284EC6E9f1291E`
-- `PeerCoinCore`: `0xad494561EF28b7853778036a02DbADf190465732`
+- `PeerCoinCore`: `0xEcBb6500a9582A470Cd6f8A5BBd825Bf3d735Ae9`
