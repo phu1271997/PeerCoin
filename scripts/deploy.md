@@ -17,7 +17,7 @@ This guide provides step-by-step instructions for deploying the PeerCoin Intelli
 2. Copy and paste the entire contents of [`contracts/reputation_ledger.py`](file:///Users/peter/Downloads/AI/Genlayer/6-PeerCoin/contracts/reputation_ledger.py).
 3. Click **Deploy**.
 4. In the left panel under Transactions, click the deployment transaction and verify that **`Result: SUCCESS`**.
-5. Deployed Address: `0x5cBf00F1effeae8A5062c3029eda8E826b5C7ebE`.
+5. Deployed Address: `0x0AEe9Fe2d39272eA73976Bcca4284EC6E9f1291E`.
 
 ---
 
@@ -26,7 +26,7 @@ This guide provides step-by-step instructions for deploying the PeerCoin Intelli
 1. Create a new contract file in Studio named `peercoin_core.py`.
 2. Copy and paste the entire contents of [`contracts/peercoin_core.py`](file:///Users/peter/Downloads/AI/Genlayer/6-PeerCoin/contracts/peercoin_core.py).
 3. Fill in the constructor arguments:
-   - `reputation_addr`: `0x5cBf00F1effeae8A5062c3029eda8E826b5C7ebE`
+   - `reputation_addr`: `0x0AEe9Fe2d39272eA73976Bcca4284EC6E9f1291E`
    - `author_stake`: `100000000000000000000` (100 GEN in wei)
    - `reviewer_stake`: `20000000000000000000` (20 GEN in wei)
    - `min_reviewers`: `1`
@@ -35,19 +35,19 @@ This guide provides step-by-step instructions for deploying the PeerCoin Intelli
    - `pass_threshold_avg`: `60`
 4. Click **Deploy**.
 5. Click the deployment transaction and verify that **`Result: SUCCESS`**.
-6. Deployed Address: `0x7E4fA4381C1AaB44d3182c3e484576e0B6Dfe346`.
+6. Deployed Address: `0x12f6F425d2C050A6B153a46DEB062D3AE6c22710`.
 
 ---
 
 ## Step 3: Link Reputation Ledger to Core Contract
 
 1. In Studio, select the deployed `ReputationLedger` contract interface.
-2. Execute the `set_core(core_addr)` method, passing `0x7E4fA4381C1AaB44d3182c3e484576e0B6Dfe346`.
+2. Execute the `set_core(core_addr)` method, passing `0x12f6F425d2C050A6B153a46DEB062D3AE6c22710`.
 3. Confirm transaction execution.
 
 ---
 
 ## Deployed Addresses Summary (Studionet)
 
-- `ReputationLedger`: `0x5cBf00F1effeae8A5062c3029eda8E826b5C7ebE`
-- `PeerCoinCore`: `0x7E4fA4381C1AaB44d3182c3e484576e0B6Dfe346`
+- `ReputationLedger`: `0x0AEe9Fe2d39272eA73976Bcca4284EC6E9f1291E`
+- `PeerCoinCore`: `0x12f6F425d2C050A6B153a46DEB062D3AE6c22710`

@@ -8,5 +8,5 @@ export function makeClient(userAddress: `0x${string}`) {
   });
 }
 
-export const CONTRACT_ADDRESS = (import.meta.env.VITE_CONTRACT_ADDRESS || '0x7E4fA4381C1AaB44d3182c3e484576e0B6Dfe346') as `0x${string}`;
-export const REPUTATION_ADDRESS = (import.meta.env.VITE_REPUTATION_ADDRESS || '0x5cBf00F1effeae8A5062c3029eda8E826b5C7ebE') as `0x${string}`;
+export const CONTRACT_ADDRESS = (import.meta.env.VITE_CONTRACT_ADDRESS || '0x12f6F425d2C050A6B153a46DEB062D3AE6c22710') as `0x${string}`;
+export const REPUTATION_ADDRESS = (import.meta.env.VITE_REPUTATION_ADDRESS || '0x0AEe9Fe2d39272eA73976Bcca4284EC6E9f1291E') as `0x${string}`;

@@ -56,8 +56,8 @@ Author, Reviewer ─────►│                       │
 2. In Settings, select **Reset Storage** and perform a hard refresh (`Cmd+Shift+R`).
 3. Connect your MetaMask wallet and switch to **GenLayer Studio Network** (`chainId: 61999` / `0xF1EF`, RPC: `https://studio.genlayer.com/api`).
 4. Fund your wallet with GEN from the Studio **Accounts** panel.
-5. Deploy `reputation_ledger.py` -> `0x5cBf00F1effeae8A5062c3029eda8E826b5C7ebE`.
-6. Deploy `peercoin_core.py` -> `0x7E4fA4381C1AaB44d3182c3e484576e0B6Dfe346`.
+5. Deploy `reputation_ledger.py` -> `0x0AEe9Fe2d39272eA73976Bcca4284EC6E9f1291E`.
+6. Deploy `peercoin_core.py` -> `0x12f6F425d2C050A6B153a46DEB062D3AE6c22710`.
 7. Execute `set_core(peercoin_core_address)` on `ReputationLedger`.
 
 Detailed deployment instructions are available in [`scripts/deploy.md`](file:///Users/peter/Downloads/AI/Genlayer/6-PeerCoin/scripts/deploy.md).
@@ -68,8 +68,8 @@ Detailed deployment instructions are available in [`scripts/deploy.md`](file:///
 
 | Contract | Network | Address | Explorer Link |
 |---|---|---|---|
-| `PeerCoinCore` | studionet | `0x7E4fA4381C1AaB44d3182c3e484576e0B6Dfe346` | [Explorer Tx](https://genlayer-explorer.vercel.app) |
-| `ReputationLedger` | studionet | `0x5cBf00F1effeae8A5062c3029eda8E826b5C7ebE` | [Explorer Tx](https://genlayer-explorer.vercel.app) |
+| `PeerCoinCore` | studionet | `0x12f6F425d2C050A6B153a46DEB062D3AE6c22710` | [Explorer Tx](https://genlayer-explorer.vercel.app) |
+| `ReputationLedger` | studionet | `0x0AEe9Fe2d39272eA73976Bcca4284EC6E9f1291E` | [Explorer Tx](https://genlayer-explorer.vercel.app) |
 
 ---
 
@@ -93,8 +93,8 @@ Detailed deployment instructions are available in [`scripts/deploy.md`](file:///
    ```
 2. Configure environment variables in `.env`:
    ```env
-   VITE_CONTRACT_ADDRESS=0x7E4fA4381C1AaB44d3182c3e484576e0B6Dfe346
-   VITE_REPUTATION_ADDRESS=0x5cBf00F1effeae8A5062c3029eda8E826b5C7ebE
+   VITE_CONTRACT_ADDRESS=0x12f6F425d2C050A6B153a46DEB062D3AE6c22710
+   VITE_REPUTATION_ADDRESS=0x0AEe9Fe2d39272eA73976Bcca4284EC6E9f1291E
    ```
 3. Start the local development server:
    ```bash

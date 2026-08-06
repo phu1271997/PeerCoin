@@ -4,6 +4,13 @@ All notable changes to the PeerCoin project will be documented in this file. For
 
 ## [Unreleased]
 
+### Redeployment on studionet (v0.2)
+- **Deployed** fresh `ReputationLedger` on studionet at `0x0AEe9Fe2d39272eA73976Bcca4284EC6E9f1291E` (replaces `0x5cBf00F1effeae8A5062c3029eda8E826b5C7ebE`).
+- **Deployed** upgraded `PeerCoinCore` on studionet at `0x12f6F425d2C050A6B153a46DEB062D3AE6c22710` (replaces `0x7E4fA4381C1AaB44d3182c3e484576e0B6Dfe346`). Ships the 3-lens AI jury + prompt injection canary + input hardening bundle.
+- **Linked** the new ledger to the new core via `set_core(0x12f6F425d2C050A6B153a46DEB062D3AE6c22710)`.
+- **Synced** addresses across `.env.example`, `frontend/.env`, `frontend/src/lib/client.ts`, `README.md`, `scripts/deploy.md`, `scripts/seed.md`, and `ARCHITECTURE.md`.
+- **Redeployed** frontend to Vercel prod so live app talks to the new contracts.
+
 ### Documentation Overhaul milestone
 - **Added** [ARCHITECTURE.md](ARCHITECTURE.md) — contract topology, paper state machine, non-deterministic consensus sequence diagram, storage schema table, failure-mode table. All diagrams in Mermaid so they render on GitHub.
 - **Added** [ECONOMICS.md](ECONOMICS.md) — stake/reward flow-of-funds diagrams for the pass / fail / FAILED branches, a worked 4-reviewer example, breakeven math for honest reviewers, incentive claims, redeploy vs adjust guidance, open economic questions.
