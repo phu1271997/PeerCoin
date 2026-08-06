@@ -7,6 +7,14 @@ import re
 import typing
 from dataclasses import dataclass
 
+# The current studionet runtime renamed `allow_storage` -> `allow`
+# (accessible via gl.storage.allow). Star-import may or may not still
+# expose `allow_storage`. Use whichever is available.
+try:
+    _storage_allow = allow_storage  # v0.2 name via star-import
+except NameError:
+    _storage_allow = gl.storage.allow  # v0.3+ name
+
 VERDICT_ACCEPT = "ACCEPT"
 VERDICT_WEAK_ACCEPT = "WEAK_ACCEPT"
 VERDICT_WEAK_REJECT = "WEAK_REJECT"
@@ -27,7 +35,7 @@ CANARY_TOKEN = "PC7-CANARY-9f3b2a1e-DO-NOT-ECHO-USER-INPUT"
 BORDERLINE_MARGIN = 5
 
 
-@allow_storage
+@_storage_allow
 @dataclass
 class Review:
     reviewer: str
@@ -39,7 +47,7 @@ class Review:
     claimed: bool
 
 
-@allow_storage
+@_storage_allow
 @dataclass
 class Paper:
     author: str
@@ -679,6 +687,49 @@ class Contract(gl.Contract):
             "aligned": r.aligned,
             "claimed": r.claimed,
         }
+
+    @gl.public.write
+    def diag_bump_id(self) -> str:
+        # Diagnostic step 1: increment a bigint field. Isolates whether
+        # simple state writes work at all. Non-payable, ~cheap.
+        old = str(self.next_paper_id)
+        self.next_paper_id = self.next_paper_id + bigint(1)
+        return f"OK bumped {old} -> {str(self.next_paper_id)}"
+
+    @gl.public.write
+    def diag_write_seen_url(self, url: str) -> str:
+        # Diagnostic step 2: write to a TreeMap[str, bool]. Isolates
+        # whether simple TreeMap writes work.
+        self.seen_urls[url] = True
+        exists = self.seen_urls.get(url, False)
+        return f"OK seen_urls[{url}] = {exists}"
+
+    @gl.public.write
+    def diag_write_paper(self, key: str) -> str:
+        # Diagnostic step 3: construct a Paper dataclass with hardcoded
+        # values and write to TreeMap[str, Paper]. Isolates whether
+        # Paper storage serialization is the bug.
+        p = Paper(
+            author="0xdiagnostic",
+            title="diag",
+            field="diag",
+            url="https://diag.test/" + key,
+            abstract="diagnostic paper",
+            author_stake=bigint(0),
+            bounty_pool=bigint(0),
+            state=STATE_OPEN,
+            submitted_at=bigint(0),
+            reviewer_ids="",
+            ai_verdict="",
+            ai_rigor=u8(0),
+            ai_novelty=u8(0),
+            ai_reproduc=u8(0),
+            ai_reason="",
+            finalized_at=bigint(0),
+            author_claimed=False,
+        )
+        self.papers[key] = p
+        return f"OK papers[{key}] written, title={self.papers[key].title}"
 
     @gl.public.view
     def get_config(self) -> dict:
