@@ -731,6 +731,73 @@ class Contract(gl.Contract):
         self.papers[key] = p
         return f"OK papers[{key}] written, title={self.papers[key].title}"
 
+    @gl.public.write.payable
+    def diag_payable_min(self) -> str:
+        # Isolate: does @payable decorator work at all with a bare body?
+        return "OK payable ran"
+
+    @gl.public.write.payable
+    def diag_payable_value(self) -> str:
+        # Isolate: can we READ gl.message.value in a payable method?
+        v = int(gl.message.value)
+        return "OK value=" + str(v)
+
+    @gl.public.write.payable
+    def diag_payable_value_bi(self) -> str:
+        # Isolate: does _msg_value_bi() work (wraps in bigint)?
+        v = _msg_value_bi()
+        return "OK vbi=" + str(int(v))
+
+    @gl.public.write
+    def diag_addr_str(self) -> str:
+        # Isolate: does _addr_str on LIVE gl.message.sender_address work?
+        return "OK addr=" + _addr_str(gl.message.sender_address)
+
+    @gl.public.write
+    def diag_now_ts(self) -> str:
+        # Isolate: does _now_ts() (gl.vm.get_timestamp().timestamp()) work?
+        t = _now_ts()
+        return "OK ts=" + str(int(t))
+
+    @gl.public.write
+    def diag_validate_url_test(self, url: str) -> str:
+        # Isolate: does _validate_url work on a real URL?
+        clean = _validate_url(url, MAX_URL_LEN, "test")
+        return "OK url=" + clean
+
+    @gl.public.write.payable
+    def submit_paper_v2(self, title: str, field: str, url: str, abstract: str) -> str:
+        # STRIPPED-DOWN payable path — no stake check, no dedup, no
+        # timestamp, no address lookup. Just Paper storage write with
+        # user args. If this WORKS but submit_paper doesn't, then one
+        # of the removed features (_addr_str / _now_ts / _validate_url /
+        # stake require / seen_urls dedup) is the bug. If this ALSO
+        # fails, the bug is in the payable decorator or msg.value
+        # arithmetic itself.
+        paper_id_str = str(self.next_paper_id)
+        p = Paper(
+            author="0xtest",
+            title=title,
+            field=field,
+            url=url,
+            abstract=abstract,
+            author_stake=bigint(100_000_000_000_000_000_000),
+            bounty_pool=bigint(0),
+            state=STATE_OPEN,
+            submitted_at=bigint(0),
+            reviewer_ids="",
+            ai_verdict="",
+            ai_rigor=u8(0),
+            ai_novelty=u8(0),
+            ai_reproduc=u8(0),
+            ai_reason="",
+            finalized_at=bigint(0),
+            author_claimed=False,
+        )
+        self.papers[paper_id_str] = p
+        self.next_paper_id = self.next_paper_id + bigint(1)
+        return paper_id_str
+
     @gl.public.view
     def get_config(self) -> dict:
         # Diagnostic view — inspect the constants set at deploy time.
