@@ -57,7 +57,7 @@ Author, Reviewer ─────►│                       │
 3. Connect your MetaMask wallet and switch to **GenLayer Studio Network** (`chainId: 61999` / `0xF1EF`, RPC: `https://studio.genlayer.com/api`).
 4. Fund your wallet with GEN from the Studio **Accounts** panel.
 5. Deploy `reputation_ledger.py` -> `0x5cBf00F1effeae8A5062c3029eda8E826b5C7ebE`.
-6. Deploy `peercoin_core.py` -> `0x731e5800dfc5689B7B5b93D1634f335464513Ab3`.
+6. Deploy `peercoin_core.py` -> `0x7E4fA4381C1AaB44d3182c3e484576e0B6Dfe346`.
 7. Execute `set_core(peercoin_core_address)` on `ReputationLedger`.
 
 Detailed deployment instructions are available in [`scripts/deploy.md`](file:///Users/peter/Downloads/AI/Genlayer/6-PeerCoin/scripts/deploy.md).
@@ -68,8 +68,19 @@ Detailed deployment instructions are available in [`scripts/deploy.md`](file:///
 
 | Contract | Network | Address | Explorer Link |
 |---|---|---|---|
-| `PeerCoinCore` | studionet | `0x731e5800dfc5689B7B5b93D1634f335464513Ab3` | [Explorer Tx](https://genlayer-explorer.vercel.app) |
+| `PeerCoinCore` | studionet | `0x7E4fA4381C1AaB44d3182c3e484576e0B6Dfe346` | [Explorer Tx](https://genlayer-explorer.vercel.app) |
 | `ReputationLedger` | studionet | `0x5cBf00F1effeae8A5062c3029eda8E826b5C7ebE` | [Explorer Tx](https://genlayer-explorer.vercel.app) |
+
+---
+
+## 5b. Companion Documents
+
+- [ARCHITECTURE.md](ARCHITECTURE.md) — contract topology, state machine, and non-deterministic consensus flow (with Mermaid diagrams).
+- [ECONOMICS.md](ECONOMICS.md) — stake/reward math, worked example, incentive claims.
+- [SECURITY.md](SECURITY.md) — threat model, prompt injection defense, hardening notes.
+- [CONTRIBUTING.md](CONTRIBUTING.md) — dev setup, PR checklist, contract-change rules.
+- [scripts/deploy.md](scripts/deploy.md) — step-by-step Studio deploy.
+- [scripts/seed.md](scripts/seed.md) — sample data walkthrough for demos.
 
 ---
 
@@ -82,7 +93,7 @@ Detailed deployment instructions are available in [`scripts/deploy.md`](file:///
    ```
 2. Configure environment variables in `.env`:
    ```env
-   VITE_CONTRACT_ADDRESS=0x731e5800dfc5689B7B5b93D1634f335464513Ab3
+   VITE_CONTRACT_ADDRESS=0x7E4fA4381C1AaB44d3182c3e484576e0B6Dfe346
    VITE_REPUTATION_ADDRESS=0x5cBf00F1effeae8A5062c3029eda8E826b5C7ebE
    ```
 3. Start the local development server:
