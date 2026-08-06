@@ -4,6 +4,15 @@ All notable changes to the PeerCoin project will be documented in this file. For
 
 ## [Unreleased]
 
+### Redeployment on studionet (v0.3) — critical timestamp bug fixed
+- **Root cause found**: every submit_paper / finalize / claim tx on v0.1 and v0.2 was reverting inside the contract because `gl.block.timestamp` does not exist in the current studionet Python runtime (correct API is `gl.vm.get_timestamp()` returning a timezone-aware datetime). Verified against `sdk.genlayer.com/main/_static/ai/api.txt`. Studionet marked those txs FINALIZED but did not refund `msg.value`, so 550 GEN got stuck across the two failed cores (330 GEN in v0.2 `0x12f6…2710`, 220 GEN in v0.1 `0x7E4f…e346`). No admin withdraw path — permanently lost.
+- **Deployed v0.3** `PeerCoinCore` at `0xad494561EF28b7853778036a02DbADf190465732` with the timestamp fix and the new `get_config()` diagnostic view. Reputation ledger at `0x0AEe9Fe2d39272eA73976Bcca4284EC6E9f1291E` is unchanged; `set_core` re-linked to the new core.
+- **Verified** post-deploy via `get_config()` — stakes, thresholds, reputation address, and `next_paper_id: 0` all correct.
+- **Fixed** Submit.tsx false-positive success screen — now polls `list_papers.total` before/after submit and only marks success when the total actually advances; on unchanged total, surfaces a specific error naming likely causes (duplicate URL, URL validation, length limits, insufficient stake) so the user can fix inputs before retrying.
+- **Fixed** PaperDetail.tsx loading state — `finally` block previously kept spinner spinning on successful retries. Now clears loading on both success and final-failure paths; retry count bumped 3 → 5 (with 3s interval) to give ~15s for slow finalize propagation.
+- **Synced** addresses across `.env.example`, `frontend/.env`, `frontend/src/lib/client.ts`, `README.md`, `scripts/deploy.md`, `scripts/seed.md`, `ARCHITECTURE.md`.
+- **Redeployed** frontend to Vercel prod.
+
 ### Redeployment on studionet (v0.2)
 - **Deployed** fresh `ReputationLedger` on studionet at `0x0AEe9Fe2d39272eA73976Bcca4284EC6E9f1291E` (replaces `0x5cBf00F1effeae8A5062c3029eda8E826b5C7ebE`).
 - **Deployed** upgraded `PeerCoinCore` on studionet at `0x12f6F425d2C050A6B153a46DEB062D3AE6c22710` (replaces `0x7E4fA4381C1AaB44d3182c3e484576e0B6Dfe346`). Ships the 3-lens AI jury + prompt injection canary + input hardening bundle.
