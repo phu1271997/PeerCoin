@@ -111,6 +111,15 @@ def _now_ts() -> "bigint":
     return bigint(int(ts.timestamp()))
 
 
+def _msg_value_bi() -> "bigint":
+    # gl.message.value is typed u256 (Annotated int size=32 unsigned) in the
+    # current runtime. Arithmetic or comparison against a stored `bigint`
+    # (Python unbounded int) raises TypeError → tx reverts silently on
+    # studionet (msg.value NOT refunded). Coerce to bigint at every entry
+    # point to avoid this trap.
+    return bigint(int(gl.message.value))
+
+
 def _validate_url(u: str, max_len: int, field_name: str) -> str:
     s = u.strip()
     _require(len(s) > 0, f"{field_name} required")
@@ -258,7 +267,8 @@ class Contract(gl.Contract):
 
     @gl.public.write.payable
     def submit_paper(self, title: str, field: str, url: str, abstract: str) -> str:
-        _require(gl.message.value >= self.author_stake_amount, "insufficient author stake")
+        value_bi = _msg_value_bi()
+        _require(value_bi >= self.author_stake_amount, "insufficient author stake")
         clean_title = title.strip()
         clean_field = field.strip()
         clean_abstract = abstract.strip()
@@ -269,7 +279,7 @@ class Contract(gl.Contract):
         clean_url = _validate_url(url, MAX_URL_LEN, "paper url")
         _require(not self.seen_urls.get(clean_url, False), "duplicate paper URL")
 
-        bounty_topup = gl.message.value - self.author_stake_amount
+        bounty_topup = value_bi - self.author_stake_amount
         paper_id_str = str(self.next_paper_id)
 
         self.papers[paper_id_str] = Paper(
@@ -298,19 +308,21 @@ class Contract(gl.Contract):
 
     @gl.public.write.payable
     def sponsor_bounty(self, paper_id_str: str) -> None:
+        value_bi = _msg_value_bi()
         _require(paper_id_str in self.papers, "paper not found")
-        _require(gl.message.value > bigint(0), "must send value to sponsor bounty")
+        _require(value_bi > bigint(0), "must send value to sponsor bounty")
         paper = self.papers[paper_id_str]
         _require(paper.state != STATE_FINALIZED and paper.state != STATE_FAILED, "paper already closed")
-        paper.bounty_pool = paper.bounty_pool + gl.message.value
+        paper.bounty_pool = paper.bounty_pool + value_bi
         self.papers[paper_id_str] = paper
 
     @gl.public.write.payable
     def submit_review(self, paper_id_str: str, verdict: str, confidence: int, review_url: str) -> None:
+        value_bi = _msg_value_bi()
         _require(paper_id_str in self.papers, "paper not found")
         paper = self.papers[paper_id_str]
         _require(paper.state in (STATE_OPEN, STATE_REVIEWING), "paper not accepting reviews")
-        _require(gl.message.value == self.reviewer_stake_amount, "incorrect reviewer stake amount")
+        _require(value_bi == self.reviewer_stake_amount, "incorrect reviewer stake amount")
         _require(verdict in (VERDICT_ACCEPT, VERDICT_WEAK_ACCEPT, VERDICT_WEAK_REJECT, VERDICT_REJECT), "invalid verdict")
         _require(0 <= confidence <= 100, "confidence must be 0-100")
         clean_review_url = _validate_url(review_url, MAX_REVIEW_URL_LEN, "review url")
