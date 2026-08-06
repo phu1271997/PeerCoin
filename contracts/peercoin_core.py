@@ -103,6 +103,14 @@ def _require(cond: bool, msg: str):
         raise gl.vm.UserError(msg)
 
 
+def _now_ts() -> "bigint":
+    # gl.block does NOT exist in current studionet runtime — the correct API
+    # is gl.vm.get_timestamp() which returns a timezone-aware datetime.
+    # Cast to unix seconds for bigint storage.
+    ts = gl.vm.get_timestamp()
+    return bigint(int(ts.timestamp()))
+
+
 def _validate_url(u: str, max_len: int, field_name: str) -> str:
     s = u.strip()
     _require(len(s) > 0, f"{field_name} required")
@@ -273,7 +281,7 @@ class Contract(gl.Contract):
             author_stake=self.author_stake_amount,
             bounty_pool=bounty_topup,
             state=STATE_OPEN,
-            submitted_at=bigint(gl.block.timestamp),
+            submitted_at=_now_ts(),
             reviewer_ids="",
             ai_verdict="",
             ai_rigor=u8(0),
@@ -339,7 +347,7 @@ class Contract(gl.Contract):
         paper = self.papers[paper_id_str]
         _require(paper.state in (STATE_OPEN, STATE_REVIEWING), "paper already finalized or failed")
 
-        now = bigint(gl.block.timestamp)
+        now = _now_ts()
         r_ids = _split_ids(paper.reviewer_ids)
         reviewer_count = len(r_ids)
         window_over = (now - paper.submitted_at) >= self.review_window_secs
@@ -482,7 +490,7 @@ class Contract(gl.Contract):
         ai = _extract_json(res_str)
         if not ai:
             paper.state = STATE_FAILED
-            paper.finalized_at = bigint(gl.block.timestamp)
+            paper.finalized_at = _now_ts()
             self.papers[paper_id_str] = paper
             return
 
@@ -490,7 +498,7 @@ class Contract(gl.Contract):
         # somehow passed a garbage payload through), refuse to settle.
         if str(ai.get("canary", "")) != CANARY_TOKEN:
             paper.state = STATE_FAILED
-            paper.finalized_at = bigint(gl.block.timestamp)
+            paper.finalized_at = _now_ts()
             self.papers[paper_id_str] = paper
             return
 
@@ -506,7 +514,7 @@ class Contract(gl.Contract):
         pass_thresh = int(self.pass_threshold_avg)
         if abs(avg - pass_thresh) <= BORDERLINE_MARGIN:
             paper.state = STATE_FAILED
-            paper.finalized_at = bigint(gl.block.timestamp)
+            paper.finalized_at = _now_ts()
             paper.ai_verdict = "BORDERLINE"
             paper.ai_rigor = u8(max(0, min(100, rigor)))
             paper.ai_novelty = u8(max(0, min(100, novelty)))
@@ -554,7 +562,7 @@ class Contract(gl.Contract):
         paper.ai_reproduc = u8(max(0, min(100, repro)))
         paper.ai_reason = str(ai.get("reason", ""))[:2000]
         paper.state = STATE_FINALIZED
-        paper.finalized_at = bigint(gl.block.timestamp)
+        paper.finalized_at = _now_ts()
         self.papers[paper_id_str] = paper
 
     @gl.public.write
@@ -658,6 +666,23 @@ class Contract(gl.Contract):
             "stake": str(r.stake),
             "aligned": r.aligned,
             "claimed": r.claimed,
+        }
+
+    @gl.public.view
+    def get_config(self) -> dict:
+        # Diagnostic view — inspect the constants set at deploy time.
+        # Frontend can use this to sanity-check that stake amounts match
+        # what it is trying to send, catching wei-vs-GEN mistakes cheaply.
+        return {
+            "author_stake_amount": str(self.author_stake_amount),
+            "reviewer_stake_amount": str(self.reviewer_stake_amount),
+            "min_reviewers": int(self.min_reviewers),
+            "max_reviewers": int(self.max_reviewers),
+            "review_window_secs": str(self.review_window_secs),
+            "pass_threshold_avg": int(self.pass_threshold_avg),
+            "next_paper_id": str(self.next_paper_id),
+            "reputation_addr": _addr_str(self.reputation),
+            "admin": _addr_str(self.admin),
         }
 
     @gl.public.view
