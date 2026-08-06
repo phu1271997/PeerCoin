@@ -4,6 +4,21 @@ All notable changes to the PeerCoin project will be documented in this file. For
 
 ## [Unreleased]
 
+### Redeployment on studionet (v0.5) — decorator migration fix (THE fix)
+- **Third root cause found and confirmed** — the current studionet runtime renamed `allow_storage` → `allow` (accessible as `gl.storage.allow`) in v0.3.0 per the migration guide at sdk.genlayer.com. The star-import still exposed `allow_storage` as a name so schema loading and view methods worked, but on the STATE-WRITE path the old-alias decorator no-oped: dataclass instances weren't actually marked storage-compatible, and any write of `Paper(...)` into `TreeMap[str, Paper]` inside a payable method reverted silently. Neither the u256 fix (v0.4) nor the timestamp fix (v0.3) could have caught this on their own.
+- **Verified via three non-payable diagnostic methods** (`diag_bump_id`, `diag_write_seen_url`, `diag_write_paper`) added to v0.5: all three returned `SUCCESS` on the deployed contract, proving simple state writes, TreeMap writes, AND Paper dataclass storage all work when the decorator is applied via the try/except resolver — before v0.5 the same Paper write path reverted.
+- **Deployed v0.5** `PeerCoinCore` at `0x0db9824dE6E9fAcfCe13701123b9e3c95C4AD38E`. Reputation ledger `0x0AEe9Fe2d39272eA73976Bcca4284EC6E9f1291E` unchanged.
+- **Added** at module scope:
+  ```python
+  try:
+      _storage_allow = allow_storage         # v0.2 name via star-import
+  except NameError:
+      _storage_allow = gl.storage.allow      # v0.3+ name
+  ```
+  and applied `@_storage_allow` to both `Paper` and `Review`.
+- **Added** diagnostic methods `diag_bump_id`, `diag_write_seen_url(url)`, `diag_write_paper(key)` — non-payable, cheap probes that bisect the write path. Kept in the contract as a permanent safety net for future redeploys.
+- **Total GEN permanently stuck across the four-version debug cycle: 770 GEN** (220 v0.1 + 330 v0.2 + 110 v0.3 + 110 v0.4). No admin withdraw path in any core; chalked up to debug cost.
+
 ### Redeployment on studionet (v0.4) — u256/bigint arithmetic bug fixed
 - **Second root cause found** (distinct from the v0.3 timestamp fix): `gl.message.value` is typed `u256` (Annotated[int, size=32, unsigned]) in the current studionet runtime, not `bigint`. Subtracting a stored `bigint` from a `u256` raises TypeError, and on studionet a TypeError inside a `@gl.public.write.payable` method reverts the tx WITHOUT refunding `msg.value`. Verified against sdk.genlayer.com api reference: *"You cannot directly subtract a stored bigint from gl.message.value. Convert explicitly."* This bug shipped in every prior version — an extra 110 GEN got stuck in the v0.3 core `0xad494561EF28b7853778036a02DbADf190465732` when the user tested it, proving the timestamp fix alone was necessary-but-not-sufficient.
 - **Deployed v0.4** `PeerCoinCore` at `0xEcBb6500a9582A470Cd6f8A5BBd825Bf3d735Ae9`. Reputation ledger `0x0AEe9Fe2d39272eA73976Bcca4284EC6E9f1291E` unchanged; `set_core` re-linked.
