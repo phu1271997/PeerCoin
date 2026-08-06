@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { PlusCircle, Search, Filter, ShieldCheck, ChevronRight, RefreshCw, Cpu } from 'lucide-react';
+import { PlusCircle, Search, Filter, ShieldCheck, ChevronRight, RefreshCw, Cpu, Coins, ExternalLink } from 'lucide-react';
 import { makeClient, CONTRACT_ADDRESS } from '../lib/client';
+import { PaperGridSkeleton } from '../components/PaperCardSkeleton';
 
 interface HomeProps {
   account: `0x${string}` | null;
@@ -141,11 +142,38 @@ export const Home: React.FC<HomeProps> = ({ account, onNavigate }) => {
         </div>
       )}
 
+      {/* Demo Mode banner — visible when connected but nothing on-chain yet */}
+      {!loading && !fetchError && totalOnChain === 0 && account && (
+        <div className="p-5 rounded-2xl bg-gradient-to-r from-amber-950/50 to-slate-900 border border-amber-500/30 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+          <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex-shrink-0">
+            <Coins className="w-6 h-6" />
+          </div>
+          <div className="flex-1">
+            <h3 className="text-sm font-bold text-slate-100 mb-1">Demo Mode — seed the app first</h3>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              The contract is empty. Fund your wallet from Studio's Accounts panel, then follow <code className="text-teal-400 font-mono">scripts/seed.md</code> to publish one demo preprint plus two demo reviews. Total cost: 140 GEN, all recoverable via <code className="text-teal-400 font-mono">claim</code>.
+            </p>
+          </div>
+          <a
+            href="https://studio.genlayer.com/contracts"
+            target="_blank"
+            rel="noreferrer"
+            className="flex-shrink-0 inline-flex items-center space-x-1.5 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-semibold hover:bg-amber-500/20 transition"
+          >
+            <span>Studio Accounts</span>
+            <ExternalLink className="w-3.5 h-3.5" />
+          </a>
+        </div>
+      )}
+
       {/* Preprint Grid */}
       {loading ? (
-        <div className="p-12 text-center text-slate-400 font-mono text-sm space-y-2">
-          <RefreshCw className="w-6 h-6 mx-auto animate-spin text-teal-400" />
-          <div>Querying `list_papers` on GenLayer Studionet ({CONTRACT_ADDRESS.slice(0, 10)}...)...</div>
+        <div className="space-y-4">
+          <div className="text-center text-slate-500 font-mono text-xs flex items-center justify-center space-x-2">
+            <RefreshCw className="w-3.5 h-3.5 animate-spin text-teal-400" />
+            <span>Querying `list_papers` on GenLayer Studionet ({CONTRACT_ADDRESS.slice(0, 10)}...)...</span>
+          </div>
+          <PaperGridSkeleton count={6} />
         </div>
       ) : filtered.length === 0 ? (
         <div className="p-12 text-center bg-slate-900/50 rounded-2xl border border-slate-800 space-y-4">

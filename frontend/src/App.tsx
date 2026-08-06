@@ -6,6 +6,7 @@ import { PaperDetail } from './pages/PaperDetail';
 import { SubmitReview } from './pages/SubmitReview';
 import { Finalize } from './pages/Finalize';
 import { Leaderboard } from './pages/Leaderboard';
+import { OnboardingModal } from './components/OnboardingModal';
 import { connectWallet } from './lib/wallet';
 
 export const App: React.FC = () => {
@@ -38,6 +39,7 @@ export const App: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100 font-sans">
+      <OnboardingModal />
       <Header
         account={account}
         onConnect={handleConnect}
