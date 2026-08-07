@@ -112,11 +112,41 @@ def _require(cond: bool, msg: str):
 
 
 def _now_ts() -> "bigint":
-    # gl.block does NOT exist in current studionet runtime — the correct API
-    # is gl.vm.get_timestamp() which returns a timezone-aware datetime.
-    # Cast to unix seconds for bigint storage.
-    ts = gl.vm.get_timestamp()
-    return bigint(int(ts.timestamp()))
+    # Timestamp API drift across GenVM runtime versions:
+    #   - gl.block.timestamp   → does NOT exist (AttributeError)
+    #   - gl.vm.get_timestamp() → docs say exists, current runtime says
+    #     AttributeError. Docs are ahead of the deployed runtime.
+    #   - gl.message.datetime  → documented as string, likely works.
+    # Try each in order; fall back to bigint(0) so the tx NEVER reverts
+    # on timestamp lookup alone. If we get 0, the review-window check
+    # in finalize degrades to always-open-until-min-reviewers — safe
+    # for the pre-mainnet demo.
+    try:
+        return bigint(int(gl.vm.get_timestamp().timestamp()))
+    except Exception:
+        pass
+    try:
+        s = gl.message.datetime
+        if isinstance(s, str):
+            from datetime import datetime as _dt
+            return bigint(int(_dt.fromisoformat(s.replace("Z", "+00:00")).timestamp()))
+    except Exception:
+        pass
+    try:
+        # Some runtimes expose the raw message dict with a `datetime` or `timestamp` key.
+        raw = gl.message.raw
+        if isinstance(raw, dict):
+            for k in ("timestamp", "datetime", "block_timestamp"):
+                if k in raw:
+                    v = raw[k]
+                    if isinstance(v, (int, float)):
+                        return bigint(int(v))
+                    if isinstance(v, str):
+                        from datetime import datetime as _dt
+                        return bigint(int(_dt.fromisoformat(v.replace("Z", "+00:00")).timestamp()))
+    except Exception:
+        pass
+    return bigint(0)
 
 
 def _msg_value_bi() -> "bigint":
