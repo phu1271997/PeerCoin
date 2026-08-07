@@ -68,8 +68,8 @@ Detailed deployment instructions are available in [`scripts/deploy.md`](file:///
 
 | Contract | Network | Address | Explorer Link |
 |---|---|---|---|
-| `PeerCoinCore` | studionet | `0x0db9824dE6E9fAcfCe13701123b9e3c95C4AD38E` | [Explorer Tx](https://genlayer-explorer.vercel.app) |
-| `ReputationLedger` | studionet | `0x0AEe9Fe2d39272eA73976Bcca4284EC6E9f1291E` | [Explorer Tx](https://genlayer-explorer.vercel.app) |
+| `PeerCoinCore` | studionet | `0x0db9824dE6E9fAcfCe13701123b9e3c95C4AD38E` | [Explorer Tx](https://explorer-studio.genlayer.com) |
+| `ReputationLedger` | studionet | `0x0AEe9Fe2d39272eA73976Bcca4284EC6E9f1291E` | [Explorer Tx](https://explorer-studio.genlayer.com) |
 
 ---
 

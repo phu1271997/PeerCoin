@@ -92,7 +92,7 @@ Author claims separately if the paper passed (avg ≥ 60).
 
 ## Verification
 
-- Open the [studionet Explorer](https://genlayer-explorer.vercel.app), search for the finalize tx hash, confirm `Result: SUCCESS`.
+- Open the [studionet Explorer](https://explorer-studio.genlayer.com), search for the finalize tx hash, confirm `Result: SUCCESS`.
 - On the Leaderboard page, the aligned reviewer's address should show `+5 pts`, the misaligned should show `-3 pts`.
 
 ## Cleanup / repeat

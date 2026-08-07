@@ -11,7 +11,7 @@ interface VerdictCardProps {
   txHash?: string | null;
 }
 
-const EXPLORER_BASE = 'https://genlayer-explorer.vercel.app';
+const EXPLORER_BASE = 'https://explorer-studio.genlayer.com';
 
 function confidenceLabel(avg: number, threshold: number): { text: string; tone: string } {
   const gap = avg - threshold;

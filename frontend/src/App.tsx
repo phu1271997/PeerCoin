@@ -76,7 +76,7 @@ export const App: React.FC = () => {
           <div className="flex space-x-4">
             <a href="https://studio.genlayer.com" target="_blank" rel="noreferrer" className="hover:text-slate-300 transition">GenLayer Studio</a>
             <a href="https://portal.genlayer.foundation" target="_blank" rel="noreferrer" className="hover:text-slate-300 transition">GenLayer Portal</a>
-            <a href="https://genlayer-explorer.vercel.app" target="_blank" rel="noreferrer" className="hover:text-slate-300 transition">Explorer</a>
+            <a href="https://explorer-studio.genlayer.com" target="_blank" rel="noreferrer" className="hover:text-slate-300 transition">Explorer</a>
           </div>
         </div>
       </footer>
