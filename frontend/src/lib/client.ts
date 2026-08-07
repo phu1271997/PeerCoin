@@ -1,9 +1,23 @@
 import { createClient } from 'genlayer-js';
 import { studionet } from 'genlayer-js/chains';
 
+// The genlayer-js chain object bakes in the OLD block explorer URL
+// (genlayer-explorer.vercel.app). The correct current explorer is
+// explorer-studio.genlayer.com — override so any SDK/wallet consumer
+// that reads chain.blockExplorers gets the right one.
+const studionetFixed = {
+  ...studionet,
+  blockExplorers: {
+    default: {
+      name: 'GenLayer Studio Explorer',
+      url: 'https://explorer-studio.genlayer.com',
+    },
+  },
+} as typeof studionet;
+
 export function makeClient(userAddress: `0x${string}`) {
   return createClient({
-    chain: studionet,
+    chain: studionetFixed,
     account: userAddress,
   });
 }
