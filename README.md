@@ -57,7 +57,7 @@ Author, Reviewer ─────►│                       │
 3. Connect your MetaMask wallet and switch to **GenLayer Studio Network** (`chainId: 61999` / `0xF1EF`, RPC: `https://studio.genlayer.com/api`).
 4. Fund your wallet with GEN from the Studio **Accounts** panel.
 5. Deploy `reputation_ledger.py` -> `0x0AEe9Fe2d39272eA73976Bcca4284EC6E9f1291E`.
-6. Deploy `peercoin_core.py` -> `0x0db9824dE6E9fAcfCe13701123b9e3c95C4AD38E`.
+6. Deploy `peercoin_core.py` -> `0x8Ffd4Abda597A1A90cB0564aB121E0cb66AE9f0E`.
 7. Execute `set_core(peercoin_core_address)` on `ReputationLedger`.
 
 Detailed deployment instructions are available in [`scripts/deploy.md`](file:///Users/peter/Downloads/AI/Genlayer/6-PeerCoin/scripts/deploy.md).
@@ -68,7 +68,7 @@ Detailed deployment instructions are available in [`scripts/deploy.md`](file:///
 
 | Contract | Network | Address | Explorer Link |
 |---|---|---|---|
-| `PeerCoinCore` | studionet | `0x0db9824dE6E9fAcfCe13701123b9e3c95C4AD38E` | [Explorer Tx](https://explorer-studio.genlayer.com) |
+| `PeerCoinCore` | studionet | `0x8Ffd4Abda597A1A90cB0564aB121E0cb66AE9f0E` | [Explorer Tx](https://explorer-studio.genlayer.com) |
 | `ReputationLedger` | studionet | `0x0AEe9Fe2d39272eA73976Bcca4284EC6E9f1291E` | [Explorer Tx](https://explorer-studio.genlayer.com) |
 
 ---
@@ -93,7 +93,7 @@ Detailed deployment instructions are available in [`scripts/deploy.md`](file:///
    ```
 2. Configure environment variables in `.env`:
    ```env
-   VITE_CONTRACT_ADDRESS=0x0db9824dE6E9fAcfCe13701123b9e3c95C4AD38E
+   VITE_CONTRACT_ADDRESS=0x8Ffd4Abda597A1A90cB0564aB121E0cb66AE9f0E
    VITE_REPUTATION_ADDRESS=0x0AEe9Fe2d39272eA73976Bcca4284EC6E9f1291E
    ```
 3. Start the local development server:

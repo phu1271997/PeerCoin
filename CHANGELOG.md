@@ -4,6 +4,23 @@ All notable changes to the PeerCoin project will be documented in this file. For
 
 ## [Unreleased]
 
+### Redeployment on studionet (v0.7) — timestamp API fallback fix
+- **Fourth root cause found** — visible for the first time in the Studio GenVM Execution panel:
+  ```
+  AttributeError: module 'genlayer.gl.vm' has no attribute 'get_timestamp'
+  ```
+  The v0.3 rewrite replaced `gl.block.timestamp` with `gl.vm.get_timestamp()` per `sdk.genlayer.com` docs, but the CURRENT deployed studionet runtime doesn't expose `get_timestamp()` either — docs are ahead of runtime.
+- **Deployed v0.7** `PeerCoinCore` at `0x8Ffd4Abda597A1A90cB0564aB121E0cb66AE9f0E`. Reputation ledger `0x0AEe9Fe2d39272eA73976Bcca4284EC6E9f1291E` unchanged.
+- **Fixed** `_now_ts()` with a four-step fallback chain:
+  1. `gl.vm.get_timestamp()` — future runtime
+  2. `gl.message.datetime` — string field documented on gl.message
+  3. `gl.message.raw` dict inspection
+  4. `bigint(0)` safety net — **never raises**, so timestamp is no longer a revert source. Review-window logic degrades to always-open-until-min-reviewers, which is safe for the pre-mainnet demo.
+- **Timestamp bug history across the debug cycle:**
+  - v0.1 / v0.2: `gl.block.timestamp` — AttributeError (fixed in v0.3)
+  - v0.3 - v0.6: `gl.vm.get_timestamp()` — AttributeError (fixed HERE in v0.7)
+- All lazy imports of `datetime.datetime` are inside each fallback branch, avoiding a top-level `import datetime` that some GenVM builds prohibit.
+
 ### Redeployment on studionet (v0.5) — decorator migration fix (THE fix)
 - **Third root cause found and confirmed** — the current studionet runtime renamed `allow_storage` → `allow` (accessible as `gl.storage.allow`) in v0.3.0 per the migration guide at sdk.genlayer.com. The star-import still exposed `allow_storage` as a name so schema loading and view methods worked, but on the STATE-WRITE path the old-alias decorator no-oped: dataclass instances weren't actually marked storage-compatible, and any write of `Paper(...)` into `TreeMap[str, Paper]` inside a payable method reverted silently. Neither the u256 fix (v0.4) nor the timestamp fix (v0.3) could have caught this on their own.
 - **Verified via three non-payable diagnostic methods** (`diag_bump_id`, `diag_write_seen_url`, `diag_write_paper`) added to v0.5: all three returned `SUCCESS` on the deployed contract, proving simple state writes, TreeMap writes, AND Paper dataclass storage all work when the decorator is applied via the try/except resolver — before v0.5 the same Paper write path reverted.
