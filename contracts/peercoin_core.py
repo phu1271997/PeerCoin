@@ -187,6 +187,54 @@ def _extract_json(raw: typing.Any) -> typing.Optional[dict]:
         return None
 
 
+def _derive_verdict(rigor: int, novelty: int, repro: int, pass_thresh: int) -> tuple:
+    """Pure function. Returns (verdict, avg, is_borderline).
+    Verdict is derived from scores + threshold — the LLM's stated verdict
+    is NEVER trusted (reviewer feedback: verdict-to-threshold consistency)."""
+    avg = (rigor + novelty + repro) // 3
+    is_borderline = abs(avg - pass_thresh) <= BORDERLINE_MARGIN
+    verdict = "ACCEPT" if avg >= pass_thresh else "REJECT"
+    return verdict, avg, is_borderline
+
+
+def _validate_llm_output(parsed, pass_thresh: int) -> tuple:
+    """Pure function. Returns (ok: bool, reason: str). Every check that
+    validator_fn needs to run against the leader's parsed JSON payload."""
+    if not isinstance(parsed, dict):
+        return False, "not a dict"
+    if str(parsed.get("canary", "")) != CANARY_TOKEN:
+        return False, "canary mismatch"
+    verdict = str(parsed.get("verdict", ""))
+    if verdict not in ("ACCEPT", "REJECT"):
+        return False, "invalid verdict token"
+    try:
+        rigor = int(parsed.get("rigor", 0))
+        novelty = int(parsed.get("novelty", 0))
+        repro = int(parsed.get("reproducibility", 0))
+    except Exception:
+        return False, "scores not numeric"
+    expected, _avg, _borderline = _derive_verdict(rigor, novelty, repro, pass_thresh)
+    if verdict != expected:
+        return False, "verdict inconsistent with scores vs threshold"
+    alignment = parsed.get("reviewer_alignment", {})
+    if not isinstance(alignment, dict):
+        return False, "reviewer_alignment not a dict"
+    return True, "ok"
+
+
+def _settle_reviewers(alignment_map: dict, r_ids: list, r_ids_set: set):
+    """Pure function. Returns (aligned_ids, misaligned_ids). Only reviewers
+    in r_ids_set are considered — alignment entries for unknown reviewer_ids
+    are dropped so a malicious leader cannot slash or reward outsiders."""
+    if not isinstance(alignment_map, dict):
+        alignment_map = {}
+    aligned, misaligned = [], []
+    for rid in r_ids:
+        is_aligned = bool(alignment_map.get(rid, False)) if rid in r_ids_set else False
+        (aligned if is_aligned else misaligned).append(rid)
+    return aligned, misaligned
+
+
 def _build_jury_prompt(*, title: str, field: str, abstract: str, paper_text: str, reviews: list, pass_threshold: int) -> str:
     reviews_block = json.dumps(reviews, ensure_ascii=True, indent=2)
     return f"""You are a rigorous scientific peer reviewer serving as an on-chain AI juror on GenLayer.
@@ -472,22 +520,19 @@ class Contract(gl.Contract):
             else:
                 payload = leader_result
             parsed = _extract_json(payload)
-            if not parsed:
-                return False
 
-            # Canary check — a leader that got jailbroken by the preprint
-            # will have dropped or altered the canary token. Refuse consensus.
-            if str(parsed.get("canary", "")) != CANARY_TOKEN:
+            # Canary + verdict-vs-threshold + shape checks — via the pure
+            # helper so unit tests cover the same code the validator uses.
+            ok, _reason = _validate_llm_output(parsed, pass_threshold_local)
+            if not ok:
                 return False
 
             lead_verdict = str(parsed.get("verdict", ""))
-            if lead_verdict not in ("ACCEPT", "REJECT"):
-                return False
-            lead_avg = (
-                int(parsed.get("rigor", 0))
-                + int(parsed.get("novelty", 0))
-                + int(parsed.get("reproducibility", 0))
-            ) // 3
+            lead_rigor = int(parsed.get("rigor", 0))
+            lead_novelty = int(parsed.get("novelty", 0))
+            lead_repro = int(parsed.get("reproducibility", 0))
+            lead_avg = (lead_rigor + lead_novelty + lead_repro) // 3
+            lead_alignment = parsed.get("reviewer_alignment", {})
 
             rendered = gl.nondet.web.render(paper_url)
             p_text = rendered.text if rendered else paper_abstract
@@ -515,25 +560,36 @@ class Contract(gl.Contract):
             )
             v_resp = gl.nondet.exec_prompt(prompt)
             v_parsed = _extract_json(v_resp)
-            if not v_parsed:
-                return False
-
-            # Validator MUST also emit the canary; drop the leader if we can't
-            # even reproduce it ourselves (LLM outage / prompt drift).
-            if str(v_parsed.get("canary", "")) != CANARY_TOKEN:
+            v_ok, _v_reason = _validate_llm_output(v_parsed, pass_threshold_local)
+            if not v_ok:
                 return False
 
             v_verdict = str(v_parsed.get("verdict", ""))
-            v_avg = (
-                int(v_parsed.get("rigor", 0))
-                + int(v_parsed.get("novelty", 0))
-                + int(v_parsed.get("reproducibility", 0))
-            ) // 3
+            v_rigor = int(v_parsed.get("rigor", 0))
+            v_novelty = int(v_parsed.get("novelty", 0))
+            v_repro = int(v_parsed.get("reproducibility", 0))
+            v_avg = (v_rigor + v_novelty + v_repro) // 3
 
             if lead_verdict != v_verdict:
                 return False
             if abs(lead_avg - v_avg) > 15:
                 return False
+
+            # PER-REVIEWER ALIGNMENT AGREEMENT (reviewer feedback).
+            # Every reviewer_alignment entry that controls slashing / rewards /
+            # reputation MUST match between leader and validator. A leader that
+            # marks the wrong reviewer aligned would steal their stake AND get
+            # them a +5 reputation bump on top. Compare each reviewer_id.
+            v_alignment = v_parsed.get("reviewer_alignment", {})
+            if not isinstance(v_alignment, dict):
+                return False
+            for item in review_snapshot:
+                rid = item["reviewer_id"]
+                lead_aligned = bool(lead_alignment.get(rid, False))
+                v_aligned = bool(v_alignment.get(rid, False))
+                if lead_aligned != v_aligned:
+                    return False
+
             return True
 
         res_str = gl.vm.run_nondet(leader_fn, validator_fn)
@@ -552,9 +608,9 @@ class Contract(gl.Contract):
             self.papers[paper_id_str] = paper
             return
 
-        rigor = int(ai.get("rigor", 0))
-        novelty = int(ai.get("novelty", 0))
-        repro = int(ai.get("reproducibility", 0))
+        rigor = max(0, min(100, int(ai.get("rigor", 0))))
+        novelty = max(0, min(100, int(ai.get("novelty", 0))))
+        repro = max(0, min(100, int(ai.get("reproducibility", 0))))
         avg = (rigor + novelty + repro) // 3
 
         # Borderline case: if the score is within ±BORDERLINE_MARGIN of the
@@ -566,29 +622,35 @@ class Contract(gl.Contract):
             paper.state = STATE_FAILED
             paper.finalized_at = _now_ts()
             paper.ai_verdict = "BORDERLINE"
-            paper.ai_rigor = u8(max(0, min(100, rigor)))
-            paper.ai_novelty = u8(max(0, min(100, novelty)))
-            paper.ai_reproduc = u8(max(0, min(100, repro)))
+            paper.ai_rigor = u8(rigor)
+            paper.ai_novelty = u8(novelty)
+            paper.ai_reproduc = u8(repro)
             paper.ai_reason = str(ai.get("reason", ""))[:2000]
             self.papers[paper_id_str] = paper
             return
 
+        # VERDICT-TO-THRESHOLD CONSISTENCY at settlement time (defense in depth).
+        # validator_fn already enforces this, but a runtime bug in consensus
+        # could still slip through. Contract DERIVES verdict from scores
+        # rather than trusting the LLM's stated verdict.
+        derived_verdict, _, _ = _derive_verdict(rigor, novelty, repro, pass_thresh)
         author_passes = avg >= pass_thresh
 
-        aligned_count = 0
+        # Only reviewers who actually submitted count. An alignment_map entry
+        # for a reviewer_id not in r_ids is silently ignored — the leader
+        # cannot slash a nonexistent reviewer or grant one a payout.
+        aligned_ids, misaligned_ids = _settle_reviewers(
+            ai.get("reviewer_alignment", {}), r_ids, set(r_ids)
+        )
+        aligned_set = set(aligned_ids)
+        aligned_count = len(aligned_ids)
         misaligned_stakes = bigint(0)
-
-        alignment_map = ai.get("reviewer_alignment", {})
 
         for rid in r_ids:
             r = self.reviews[paper_id_str][rid]
-            is_aligned = bool(alignment_map.get(rid, False))
-            r.aligned = is_aligned
+            r.aligned = rid in aligned_set
             self.reviews[paper_id_str][rid] = r
-
-            if is_aligned:
-                aligned_count += 1
-            else:
+            if not r.aligned:
                 misaligned_stakes = misaligned_stakes + r.stake
 
         pool = paper.bounty_pool + misaligned_stakes
@@ -606,10 +668,10 @@ class Contract(gl.Contract):
             else:
                 rep.bump(_to_address(r.reviewer), i256(-3))
 
-        paper.ai_verdict = str(ai.get("verdict", "REJECT"))
-        paper.ai_rigor = u8(max(0, min(100, rigor)))
-        paper.ai_novelty = u8(max(0, min(100, novelty)))
-        paper.ai_reproduc = u8(max(0, min(100, repro)))
+        paper.ai_verdict = derived_verdict
+        paper.ai_rigor = u8(rigor)
+        paper.ai_novelty = u8(novelty)
+        paper.ai_reproduc = u8(repro)
         paper.ai_reason = str(ai.get("reason", ""))[:2000]
         paper.state = STATE_FINALIZED
         paper.finalized_at = _now_ts()
@@ -718,115 +780,40 @@ class Contract(gl.Contract):
             "claimed": r.claimed,
         }
 
+    # =========================================================================
+    # Admin-only maintenance methods. Every call gated by _require_admin.
+    # These NEVER touch payable state, NEVER move user funds, NEVER mutate
+    # existing papers/reviews created by users, and are strictly for the
+    # deployer to sanity-check the runtime on a fresh deploy.
+    #
+    # The `submit_paper_v2` bypass and the anonymous diagnostic methods that
+    # existed in prior versions have been DELETED per reviewer feedback —
+    # they let any caller write papers with zero stake and were a real
+    # authorization hole.
+    # =========================================================================
+
+    def _require_admin(self) -> None:
+        _require(gl.message.sender_address == self.admin, "admin only")
+
     @gl.public.write
-    def diag_bump_id(self) -> str:
-        # Diagnostic step 1: increment a bigint field. Isolates whether
-        # simple state writes work at all. Non-payable, ~cheap.
+    def admin_probe_state_write(self) -> str:
+        # Increments a scratch counter to prove basic bigint state writes work
+        # after a fresh deploy. Uses `next_paper_id` for now because that is
+        # the only bigint scratch we have — admin can only run this BEFORE any
+        # real submit_paper (otherwise it shifts the id space).
+        self._require_admin()
+        _require(int(self.next_paper_id) == 0, "state already in use; probe forbidden")
         old = str(self.next_paper_id)
         self.next_paper_id = self.next_paper_id + bigint(1)
-        return f"OK bumped {old} -> {str(self.next_paper_id)}"
+        # Reset immediately so the id space is preserved for real users.
+        self.next_paper_id = bigint(0)
+        return f"OK probed {old} -> +1 -> reset"
 
-    @gl.public.write
-    def diag_write_seen_url(self, url: str) -> str:
-        # Diagnostic step 2: write to a TreeMap[str, bool]. Isolates
-        # whether simple TreeMap writes work.
-        self.seen_urls[url] = True
-        exists = self.seen_urls.get(url, False)
-        return f"OK seen_urls[{url}] = {exists}"
-
-    @gl.public.write
-    def diag_write_paper(self, key: str) -> str:
-        # Diagnostic step 3: construct a Paper dataclass with hardcoded
-        # values and write to TreeMap[str, Paper]. Isolates whether
-        # Paper storage serialization is the bug.
-        p = Paper(
-            author="0xdiagnostic",
-            title="diag",
-            field="diag",
-            url="https://diag.test/" + key,
-            abstract="diagnostic paper",
-            author_stake=bigint(0),
-            bounty_pool=bigint(0),
-            state=STATE_OPEN,
-            submitted_at=bigint(0),
-            reviewer_ids="",
-            ai_verdict="",
-            ai_rigor=u8(0),
-            ai_novelty=u8(0),
-            ai_reproduc=u8(0),
-            ai_reason="",
-            finalized_at=bigint(0),
-            author_claimed=False,
-        )
-        self.papers[key] = p
-        return f"OK papers[{key}] written, title={self.papers[key].title}"
-
-    @gl.public.write.payable
-    def diag_payable_min(self) -> str:
-        # Isolate: does @payable decorator work at all with a bare body?
-        return "OK payable ran"
-
-    @gl.public.write.payable
-    def diag_payable_value(self) -> str:
-        # Isolate: can we READ gl.message.value in a payable method?
-        v = int(gl.message.value)
-        return "OK value=" + str(v)
-
-    @gl.public.write.payable
-    def diag_payable_value_bi(self) -> str:
-        # Isolate: does _msg_value_bi() work (wraps in bigint)?
-        v = _msg_value_bi()
-        return "OK vbi=" + str(int(v))
-
-    @gl.public.write
-    def diag_addr_str(self) -> str:
-        # Isolate: does _addr_str on LIVE gl.message.sender_address work?
-        return "OK addr=" + _addr_str(gl.message.sender_address)
-
-    @gl.public.write
-    def diag_now_ts(self) -> str:
-        # Isolate: does _now_ts() (gl.vm.get_timestamp().timestamp()) work?
-        t = _now_ts()
-        return "OK ts=" + str(int(t))
-
-    @gl.public.write
-    def diag_validate_url_test(self, url: str) -> str:
-        # Isolate: does _validate_url work on a real URL?
-        clean = _validate_url(url, MAX_URL_LEN, "test")
-        return "OK url=" + clean
-
-    @gl.public.write.payable
-    def submit_paper_v2(self, title: str, field: str, url: str, abstract: str) -> str:
-        # STRIPPED-DOWN payable path — no stake check, no dedup, no
-        # timestamp, no address lookup. Just Paper storage write with
-        # user args. If this WORKS but submit_paper doesn't, then one
-        # of the removed features (_addr_str / _now_ts / _validate_url /
-        # stake require / seen_urls dedup) is the bug. If this ALSO
-        # fails, the bug is in the payable decorator or msg.value
-        # arithmetic itself.
-        paper_id_str = str(self.next_paper_id)
-        p = Paper(
-            author="0xtest",
-            title=title,
-            field=field,
-            url=url,
-            abstract=abstract,
-            author_stake=bigint(100_000_000_000_000_000_000),
-            bounty_pool=bigint(0),
-            state=STATE_OPEN,
-            submitted_at=bigint(0),
-            reviewer_ids="",
-            ai_verdict="",
-            ai_rigor=u8(0),
-            ai_novelty=u8(0),
-            ai_reproduc=u8(0),
-            ai_reason="",
-            finalized_at=bigint(0),
-            author_claimed=False,
-        )
-        self.papers[paper_id_str] = p
-        self.next_paper_id = self.next_paper_id + bigint(1)
-        return paper_id_str
+    @gl.public.view
+    def admin_probe_now_ts(self) -> str:
+        # Cheap view — reports what _now_ts() returns without any state effect.
+        # Not admin-gated because it's read-only, but harmless either way.
+        return "ts=" + str(int(_now_ts()))
 
     @gl.public.view
     def get_config(self) -> dict:

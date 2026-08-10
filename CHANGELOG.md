@@ -4,6 +4,30 @@ All notable changes to the PeerCoin project will be documented in this file. For
 
 ## [Unreleased]
 
+### Reviewer-feedback hardening (v0.8) — authorization + consensus + tests
+Portal reviewer requested: *"Please remove or strictly authorize the diagnostic and bypass write methods, and ensure validators agree on every jury field that controls slashing, rewards, and reputation. Also enforce verdict-to-threshold consistency and add lifecycle tests for settlement and refunds before funds can move."* Full response below.
+
+**Removed the `submit_paper_v2` bypass and every anonymous `diag_*` method.** Those methods let any caller write papers with zero stake and fake metadata — a real authorization hole. Replaced with a single admin-gated pair:
+- `admin_probe_state_write()` — deployer-only, requires `next_paper_id == 0` (contract must be untouched), does a bump-then-reset so the id space is preserved for real users.
+- `admin_probe_now_ts()` — read-only view, no state effect, harmless if left ungated.
+
+**Extended `validator_fn` to enforce agreement on every field that drives settlement.** Prior to this change the validator only compared verdict and score-avg tolerance; a malicious leader could still poison the `reviewer_alignment` map to slash the wrong reviewers or grant a `+5` reputation bump to an accomplice. New checks:
+- Verdict-to-threshold consistency at BOTH validator time and settlement time — contract now derives verdict from `(rigor + novelty + reproducibility) / 3 >= pass_threshold` and ignores whatever the LLM stated. A leader claiming `verdict=ACCEPT` with `avg=30` is rejected pre-consensus.
+- Per-reviewer `reviewer_alignment` agreement — for every `reviewer_id` in `review_snapshot`, leader's aligned/not-aligned must match validator's independent computation.
+- `reviewer_alignment` map shape check — must be a dict, not a list or string.
+- Alignment entries for unknown `reviewer_id`s are silently dropped in the settle path — leader cannot slash or reward non-reviewers.
+
+**Extracted three pure helpers** so validation logic is directly unit-testable and used identically by validator and settlement paths:
+- `_derive_verdict(rigor, novelty, repro, pass_thresh)` → `(verdict, avg, is_borderline)`
+- `_validate_llm_output(parsed, pass_thresh)` → `(ok, reason)` — canary + shape + consistency
+- `_settle_reviewers(alignment_map, r_ids, r_ids_set)` → `(aligned_ids, misaligned_ids)`
+
+**Added 27 lifecycle + settlement tests** (`tests/test_lifecycle.py`) — total suite now 42 tests, all green. Covers:
+- verdict-to-threshold consistency (5 tests): accept/reject/borderline edges around the threshold
+- LLM output validation (10 tests): canary present/missing/wrong, verdict consistent/inconsistent, invalid tokens, malformed alignment, non-dict inputs, string scores
+- Reviewer settlement (5 tests): all-aligned, all-misaligned, missing keys, unknown-reviewer injection defense, non-dict alignment
+- Full lifecycle scenarios (7 tests): happy path pass with mixed reviewers (correct payouts + reputation), fail path with author stake forfeited, FAILED state refunds everyone with no reputation change, borderline treated as FAILED with full refund, double-claim guards, unknown-reviewer cannot claim, verdict-inconsistency-with-scores triggers FAILED with full refund
+
 ### Redeployment on studionet (v0.7) — timestamp API fallback fix
 - **Fourth root cause found** — visible for the first time in the Studio GenVM Execution panel:
   ```
