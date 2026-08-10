@@ -14,7 +14,7 @@ flowchart LR
     Anyone -->|claim| Core
 
     subgraph Studionet ["GenLayer studionet — chainId 61999"]
-        Core[PeerCoinCore<br/>0x8Ffd...9f0E]
+        Core[PeerCoinCore<br/>0xCf08...58D9]
         Rep[ReputationLedger<br/>0x0AEe...291E]
     end
 

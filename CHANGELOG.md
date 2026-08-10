@@ -4,6 +4,12 @@ All notable changes to the PeerCoin project will be documented in this file. For
 
 ## [Unreleased]
 
+### Redeployment on studionet (v0.8) — hardening bundle activated
+- **Deployed v0.8** `PeerCoinCore` at `0xCf08ec64514C131bFBEe21A1319C0D58630258D9`, activating the reviewer-feedback fixes (bypass removal, per-reviewer validator agreement, verdict-to-threshold consistency). Reputation ledger `0x0AEe9Fe2d39272eA73976Bcca4284EC6E9f1291E` unchanged; `set_core` re-linked.
+- **Verified** post-deploy via `get_config()` — all constructor args correct, `next_paper_id: 0` fresh state.
+- **Synced** addresses across `.env.example`, `frontend/.env`, `frontend/src/lib/client.ts`, `README.md`, `scripts/deploy.md`, `scripts/seed.md`, `ARCHITECTURE.md`.
+- **Redeployed** frontend to Vercel prod (no code change vs previous — public method signatures stable — just points at the new contract).
+
 ### Reviewer-feedback hardening (v0.8) — authorization + consensus + tests
 Portal reviewer requested: *"Please remove or strictly authorize the diagnostic and bypass write methods, and ensure validators agree on every jury field that controls slashing, rewards, and reputation. Also enforce verdict-to-threshold consistency and add lifecycle tests for settlement and refunds before funds can move."* Full response below.
 
