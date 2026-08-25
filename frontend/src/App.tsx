@@ -15,9 +15,27 @@ export const App: React.FC = () => {
   const [activePaperId, setActivePaperId] = useState<string>('0');
 
   useEffect(() => {
-    if (window.ethereum && window.ethereum.selectedAddress) {
-      setAccount(window.ethereum.selectedAddress as `0x${string}`);
-    }
+    if (!window.ethereum) return;
+    (async () => {
+      try {
+        const accs = await window.ethereum.request({ method: 'eth_accounts' });
+        if (Array.isArray(accs) && accs.length > 0) {
+          setAccount(accs[0] as `0x${string}`);
+        }
+      } catch {
+        /* wallet unavailable — user can still browse read-only */
+      }
+    })();
+    const handleAccountsChanged = (accs: string[]) => {
+      setAccount(accs.length > 0 ? (accs[0] as `0x${string}`) : null);
+    };
+    const handleChainChanged = () => window.location.reload();
+    window.ethereum.on?.('accountsChanged', handleAccountsChanged);
+    window.ethereum.on?.('chainChanged', handleChainChanged);
+    return () => {
+      window.ethereum?.removeListener?.('accountsChanged', handleAccountsChanged);
+      window.ethereum?.removeListener?.('chainChanged', handleChainChanged);
+    };
   }, []);
 
   const handleConnect = async () => {
