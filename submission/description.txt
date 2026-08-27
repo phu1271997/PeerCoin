@@ -1,0 +1,7 @@
+PeerCoin turns peer review into a skin-in-the-game market. Author stakes 100 GEN to publish a preprint URL. Reviewers stake 20 GEN with a verdict (ACCEPT / WEAK_ACCEPT / WEAK_REJECT / REJECT) and a link to their rationale.
+
+Anyone triggers finalize(). A non-deterministic block fetches the preprint and reviews with gl.nondet.web.render, runs a three-lens LLM jury (methodology, statistics, reproducibility), and returns scores plus a per-reviewer alignment map. Validators re-run the jury; consensus passes only if the verdict, score averages within tolerance, and every reviewer's aligned flag all match.
+
+Aligned reviewers claim their stake plus a share of misaligned stakes and the bounty pool, and earn +5 on the ReputationLedger. Misaligned reviewers lose stake and 3 reputation. A failing author forfeits stake.
+
+For editors and researchers wanting an accountable filter over open preprints. Solidity cannot fetch a PDF, run an LLM, or reach semantic consensus on a subjective verdict.

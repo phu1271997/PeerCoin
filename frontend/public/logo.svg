@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0f172a"/>
+      <stop offset="1" stop-color="#020617"/>
+    </linearGradient>
+    <linearGradient id="mark" x1="0.1" y1="0" x2="0.9" y2="1">
+      <stop offset="0" stop-color="#5eead4"/>
+      <stop offset="0.55" stop-color="#14b8a6"/>
+      <stop offset="1" stop-color="#059669"/>
+    </linearGradient>
+    <linearGradient id="coinFill" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5eead4"/>
+      <stop offset="1" stop-color="#059669"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.4" r="0.6">
+      <stop offset="0" stop-color="#14b8a6" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#14b8a6" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <rect width="512" height="512" rx="112" fill="url(#glow)"/>
+
+  <!-- paper sheet with folded corner -->
+  <path d="M132 108 L316 108 L380 172 L380 380 Q380 404 356 404 L132 404 Q108 404 108 380 L108 132 Q108 108 132 108 Z"
+        fill="#0b1220" stroke="url(#mark)" stroke-width="18" stroke-linejoin="round"/>
+  <path d="M316 108 L316 172 L380 172" fill="none" stroke="url(#mark)" stroke-width="18" stroke-linejoin="round" stroke-linecap="round"/>
+
+  <!-- text lines suggesting paper content -->
+  <path d="M150 200 L300 200" stroke="url(#mark)" stroke-width="12" stroke-linecap="round" opacity="0.55"/>
+  <path d="M150 240 L340 240" stroke="url(#mark)" stroke-width="12" stroke-linecap="round" opacity="0.55"/>
+  <path d="M150 280 L280 280" stroke="url(#mark)" stroke-width="12" stroke-linecap="round" opacity="0.55"/>
+
+  <!-- coin badge overlaid on paper, bottom-right, verifying peer-reviewed -->
+  <circle cx="356" cy="356" r="76" fill="#0f172a"/>
+  <circle cx="356" cy="356" r="66" fill="url(#coinFill)"/>
+  <path d="M322 356 L346 380 L392 328" fill="none" stroke="#0f172a" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

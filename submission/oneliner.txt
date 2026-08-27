@@ -1,0 +1,1 @@
+Peer review with real stakes: authors and reviewers stake GEN, an on-chain AI jury reads the preprint, rewards aligned reviewers, slashes rogue ones.
