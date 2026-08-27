@@ -34,7 +34,12 @@ export const Home: React.FC<HomeProps> = ({ account, onNavigate }) => {
       if (res) {
         setTotalOnChain(typeof res.total === 'number' ? res.total : 0);
         if (Array.isArray(res.items)) {
-          setPapers(res.items);
+          // Newest first: higher paper id at the top so recent seeds surface
+          // and legacy demo papers with low ids sink to the bottom.
+          const sorted = [...res.items].sort(
+            (a, b) => parseInt(b.id || '0', 10) - parseInt(a.id || '0', 10),
+          );
+          setPapers(sorted);
         } else {
           setPapers([]);
         }
