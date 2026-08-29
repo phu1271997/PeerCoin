@@ -5,6 +5,7 @@ import { Submit } from './pages/Submit';
 import { PaperDetail } from './pages/PaperDetail';
 import { SubmitReview } from './pages/SubmitReview';
 import { Finalize } from './pages/Finalize';
+import { Sponsor } from './pages/Sponsor';
 import { Leaderboard } from './pages/Leaderboard';
 import { OnboardingModal } from './components/OnboardingModal';
 import { connectWallet } from './lib/wallet';
@@ -80,6 +81,9 @@ export const App: React.FC = () => {
         )}
         {currentPage === 'finalize' && (
           <Finalize paperId={activePaperId} account={account} onNavigate={handleNavigate} />
+        )}
+        {currentPage === 'sponsor' && (
+          <Sponsor paperId={activePaperId} account={account} onNavigate={handleNavigate} />
         )}
         {currentPage === 'leaderboard' && (
           <Leaderboard account={account} onNavigate={handleNavigate} />

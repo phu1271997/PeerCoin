@@ -20,6 +20,7 @@ export const Home: React.FC<HomeProps> = ({ account, onNavigate }) => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [fieldFilter, setFieldFilter] = useState('ALL');
+  const [stateFilter, setStateFilter] = useState<'ALL' | 'OPEN' | 'REVIEWING' | 'FINALIZED' | 'FAILED'>('ALL');
   const [totalOnChain, setTotalOnChain] = useState<number>(0);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [activeRole, setActiveRole] = useState<Role>('author');
@@ -64,7 +65,8 @@ export const Home: React.FC<HomeProps> = ({ account, onNavigate }) => {
     const matchesSearch = (p.title || '').toLowerCase().includes(search.toLowerCase()) ||
                           (p.field || '').toLowerCase().includes(search.toLowerCase());
     const matchesField = fieldFilter === 'ALL' || (p.field || '').toLowerCase() === fieldFilter.toLowerCase();
-    return matchesSearch && matchesField;
+    const matchesState = stateFilter === 'ALL' || p.state === stateFilter;
+    return matchesSearch && matchesField && matchesState;
   });
 
   const stats = useMemo(() => {
@@ -445,6 +447,28 @@ export const Home: React.FC<HomeProps> = ({ account, onNavigate }) => {
           </div>
         </div>
 
+        {/* State filter chips */}
+        <div className="flex items-center space-x-2 overflow-x-auto pb-1">
+          <span className="text-xs text-slate-500 uppercase tracking-wider font-semibold mr-1">State:</span>
+          {(['ALL', 'OPEN', 'REVIEWING', 'FINALIZED', 'FAILED'] as const).map((s) => {
+            const count = s === 'ALL' ? papers.length : papers.filter((p) => p.state === s).length;
+            return (
+              <button
+                key={s}
+                onClick={() => setStateFilter(s)}
+                className={`px-3 py-1 rounded-full text-[11px] font-mono font-semibold transition flex items-center space-x-1.5 ${
+                  stateFilter === s
+                    ? 'bg-teal-500/20 text-teal-300 border border-teal-500/40'
+                    : 'bg-slate-900 text-slate-400 border border-slate-800 hover:text-slate-200'
+                }`}
+              >
+                <span>{s}</span>
+                <span className="text-[10px] opacity-60">({count})</span>
+              </button>
+            );
+          })}
+        </div>
+
         {fetchError && (
           <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-mono">
             Studionet Sync Warning: {fetchError}
@@ -539,7 +563,7 @@ export const Home: React.FC<HomeProps> = ({ account, onNavigate }) => {
                   <div className="pt-4 border-t border-slate-800/80 flex items-center justify-between text-xs">
                     <div className="flex items-center space-x-4">
                       <div>
-                        <span className="text-slate-500">Bounty Pool: </span>
+                        <span className="text-slate-500">Bounty: </span>
                         <span className="font-mono font-semibold text-slate-200">
                           {(BigInt(paper.bounty_pool || '0') / BigInt(10 ** 18)).toString()} GEN
                         </span>
@@ -550,10 +574,21 @@ export const Home: React.FC<HomeProps> = ({ account, onNavigate }) => {
                           {paper.reviewer_ids?.length || 0}
                         </span>
                       </div>
+                      <a
+                        href={`https://explorer-studio.genlayer.com/address/${CONTRACT_ADDRESS}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="text-slate-500 hover:text-teal-400 transition inline-flex items-center space-x-1"
+                        title="View contract on GenLayer Studio Explorer"
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                        <span>Explorer</span>
+                      </a>
                     </div>
 
                     <span className="text-teal-400 group-hover:translate-x-1 transition flex items-center font-medium">
-                      View Paper #{paper.id} <ChevronRight className="w-4 h-4 ml-0.5" />
+                      View <ChevronRight className="w-4 h-4 ml-0.5" />
                     </span>
                   </div>
                 </div>

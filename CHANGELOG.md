@@ -4,6 +4,40 @@ All notable changes to the PeerCoin project will be documented in this file. For
 
 ## [Unreleased]
 
+### Milestone Phase 1 — UX Overhaul & Discovery Bundle (2026-08-27)
+**Type:** Major feature (Loại 3) + UX overhaul (Loại 7) + new contract functionality exposed (Loại 8).
+**No contract redeploy required.** All work is frontend + newly-exposed access to a previously dead-code contract method.
+
+**Landing page rewrite — five new sections above the preprint grid:**
+- Live stats bar (preprints on-chain, distinct reviewers, GEN staked in system, finalized) computed from `list_papers` in one aggregate pass.
+- "The Problem" section — 3 cards on the scientific replication crisis, unpaid anonymous review, and preprint gatekeeping gap.
+- "How It Works" — 4-step numbered flow (submit → review → jury → claim) plus a 3-column worked example tracing GEN through pass / fail / borderline branches with exact numbers.
+- "Why GenLayer" — 3 tech cards each showing the exact non-deterministic API call (`gl.nondet.web.render`, `gl.nondet.exec_prompt`, `gl.vm.run_nondet`).
+- "How to Participate" role tabs (Author / Reviewer / Trigger) — each with per-role cost, 6 numbered steps, and a scoped CTA.
+- FAQ (6 items) covering slashing risk, prompt injection defense, borderline handling, reputation storage, LLM-error fallback, and `sponsor_bounty`.
+- Resources footer with contract explorer links + GitHub companion docs.
+
+**Sponsor Bounty page (`/frontend/src/pages/Sponsor.tsx`) — new UI caller for a previously dead-code method.**
+The `sponsor_bounty(paper_id)` payable method has existed on `PeerCoinCore` since v0.1 but had **zero UI callers** — an Explorer Gate 1 gap (any write method must be reachable from the app). The new page lets any wallet top up an OPEN/REVIEWING paper's bounty pool with quick-pick amounts (1/5/10/25 GEN) and full-decimal input. Displays current pool inline. Fail-fast on closed papers.
+
+**Discovery & filter improvements:**
+- State filter chips (ALL / OPEN / REVIEWING / FINALIZED / FAILED) with live counts per state.
+- Newest-first paper sort so freshly-seeded records surface at the top of the grid.
+- Explorer link icon on every paper card so viewers can verify on-chain state without leaving the grid.
+- Copy-to-clipboard on author address in PaperDetail (silent-fail on blocked clipboard, 1.5s check-mark confirmation).
+
+**Wallet & routing infrastructure:**
+- Replaced deprecated `window.ethereum.selectedAddress` with `eth_accounts` + `accountsChanged`/`chainChanged` listeners so connection state updates on wallet switch or chain switch without a manual refresh.
+- Added `frontend/vercel.json` with SPA rewrite `/(.*) → /` so refreshing on any state-driven path never 404s through Vercel's CDN.
+- Added `.env*` to gitignore to prevent leaking Vercel's OIDC token.
+
+**SEO / social share:**
+- `index.html` now ships full Open Graph + Twitter card meta tags with 1024×1024 logo, meta description, theme color, and PNG favicon so links to the app render a proper preview card in Discord / Twitter / Slack.
+
+**Explorer submission prep:**
+- Added `frontend/public/logo.svg` + `logo-1024.png` + `logo-512.png` (document with folded corner + checkmark badge, teal→emerald gradient matching app accent). Meets Portal spec (PNG, 128–2048 px, < 2 MB).
+- Added `submission/EXPLORER_SUBMISSION.md` — full Portal Explorer draft with character-counted one-liner (149/180), description (992/1000), expected verification outcome (449/500), category tag mapping to contract methods, and 7-step seeding procedure.
+
 ### Redeployment on studionet (v0.8) — hardening bundle activated
 - **Deployed v0.8** `PeerCoinCore` at `0xCf08ec64514C131bFBEe21A1319C0D58630258D9`, activating the reviewer-feedback fixes (bypass removal, per-reviewer validator agreement, verdict-to-threshold consistency). Reputation ledger `0x0AEe9Fe2d39272eA73976Bcca4284EC6E9f1291E` unchanged; `set_core` re-linked.
 - **Verified** post-deploy via `get_config()` — all constructor args correct, `next_paper_id: 0` fresh state.

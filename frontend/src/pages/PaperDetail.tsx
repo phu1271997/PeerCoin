@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, ExternalLink, UserCheck, Play, Award, AlertTriangle, RefreshCw } from 'lucide-react';
+import { ArrowLeft, ExternalLink, UserCheck, Play, Award, AlertTriangle, RefreshCw, TrendingUp, Copy, Check } from 'lucide-react';
 import { makeClient, CONTRACT_ADDRESS } from '../lib/client';
 import { VerdictCard } from '../components/VerdictCard';
 
@@ -16,6 +16,17 @@ export const PaperDetail: React.FC<PaperDetailProps> = ({ paperId, account, onNa
   const [error, setError] = useState<string | null>(null);
   const [claiming, setClaiming] = useState(false);
   const [claimStatus, setClaimStatus] = useState<string | null>(null);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+
+  const copyToClipboard = async (value: string, field: string) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopiedField(field);
+      setTimeout(() => setCopiedField(null), 1500);
+    } catch {
+      /* clipboard blocked — silent */
+    }
+  };
 
   useEffect(() => {
     fetchPaperData();
@@ -179,6 +190,16 @@ export const PaperDetail: React.FC<PaperDetailProps> = ({ paperId, account, onNa
 
             {!isFinalized && !isFailed && (
               <button
+                onClick={() => onNavigate('sponsor', paper.id)}
+                className="px-4 py-1.5 rounded-lg bg-slate-800 border border-amber-500/40 text-amber-400 hover:bg-amber-500/10 text-xs font-bold transition flex items-center space-x-1"
+              >
+                <TrendingUp className="w-3.5 h-3.5" />
+                <span>Sponsor Bounty</span>
+              </button>
+            )}
+
+            {!isFinalized && !isFailed && (
+              <button
                 onClick={() => onNavigate('finalize', paper.id)}
                 className="px-4 py-1.5 rounded-lg bg-slate-800 border border-teal-500/40 text-teal-400 hover:bg-teal-500/10 text-xs font-bold transition flex items-center space-x-1"
               >
@@ -201,7 +222,18 @@ export const PaperDetail: React.FC<PaperDetailProps> = ({ paperId, account, onNa
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t border-slate-800">
           <div>
             <div className="text-xs text-slate-500">Author</div>
-            <div className="text-xs font-mono font-semibold text-slate-200 truncate">{paper.author}</div>
+            <button
+              onClick={() => copyToClipboard(paper.author, 'author')}
+              className="flex items-center space-x-1 text-xs font-mono font-semibold text-slate-200 truncate hover:text-teal-300 transition group"
+              title="Copy author address"
+            >
+              <span className="truncate">{paper.author}</span>
+              {copiedField === 'author' ? (
+                <Check className="w-3 h-3 text-emerald-400 flex-shrink-0" />
+              ) : (
+                <Copy className="w-3 h-3 opacity-50 group-hover:opacity-100 flex-shrink-0" />
+              )}
+            </button>
           </div>
           <div>
             <div className="text-xs text-slate-500">Author Stake</div>
