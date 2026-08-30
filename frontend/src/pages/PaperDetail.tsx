@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { ArrowLeft, ExternalLink, UserCheck, Play, Award, AlertTriangle, RefreshCw, TrendingUp, Copy, Check } from 'lucide-react';
 import { makeClient, CONTRACT_ADDRESS } from '../lib/client';
 import { VerdictCard } from '../components/VerdictCard';
+import { ShareBar } from '../components/ShareBar';
+import { AddressLabel } from '../components/AddressLabel';
 
 interface PaperDetailProps {
   paperId: string;
@@ -226,9 +228,9 @@ export const PaperDetail: React.FC<PaperDetailProps> = ({ paperId, account, onNa
               <button
                 onClick={() => onNavigate('profile', paper.author)}
                 className="text-xs font-mono font-semibold text-slate-200 truncate hover:text-teal-300 transition"
-                title="Open author profile"
+                title={`Open author profile — ${paper.author}`}
               >
-                {paper.author}
+                <AddressLabel address={paper.author} />
               </button>
               <button
                 onClick={() => copyToClipboard(paper.author, 'author')}
@@ -261,6 +263,14 @@ export const PaperDetail: React.FC<PaperDetailProps> = ({ paperId, account, onNa
           </div>
         </div>
       </div>
+
+      {/* Social share row */}
+      <ShareBar
+        paperId={paper.id}
+        title={paper.title}
+        verdict={isFinalized ? paper.ai_verdict : null}
+        fieldTag={paper.field}
+      />
 
       {/* AI Jury Verdict Card */}
       {isFinalized && (
@@ -319,9 +329,9 @@ export const PaperDetail: React.FC<PaperDetailProps> = ({ paperId, account, onNa
                     <button
                       onClick={() => onNavigate('profile', r.reviewer)}
                       className="text-xs font-mono text-slate-400 hover:text-teal-300 transition truncate"
-                      title="Open reviewer profile"
+                      title={`Open reviewer profile — ${r.reviewer}`}
                     >
-                      {r.reviewer}
+                      <AddressLabel address={r.reviewer} />
                     </button>
                     <span className="px-2 py-0.5 rounded bg-slate-800 text-teal-300 font-mono text-xs">
                       Verdict: {r.verdict}

@@ -4,6 +4,25 @@ All notable changes to the PeerCoin project will be documented in this file. For
 
 ## [Unreleased]
 
+### Milestone Phase 3 — External Reach Bundle: ENS + Browser Notifications + Social Share (2026-08-29)
+**Type:** New integration (Loại 4) — three independent external integrations bundled into one milestone.
+**No contract redeploy required.** All integrations sit at the frontend edge.
+
+**Integration 1 — ENS resolution against Ethereum mainnet (`frontend/src/lib/ens.ts`).**
+GenLayer studionet has no ENS registry, but every wallet address is a portable EVM address that MAY have an ENS reverse record on mainnet. `resolveEnsName()` uses viem's public ETH mainnet client (via `https://eth.llamarpc.com`) to reverse-resolve. In-module cache prevents duplicate lookups within a session; concurrent lookups for the same address share one in-flight promise. New `<AddressLabel address={...} />` component renders ENS name when present, falls back to `0x1234…abcd` short form, keeps full hex on hover title. Wired into Header connected-wallet chip, PaperDetail author, PaperDetail reviewer rows, Profile page header, Leaderboard rows, Analytics top-authors list. Users with an ENS name on mainnet see their identity everywhere in the app; users without one see the same shortened address they had before.
+
+**Integration 2 — Browser Notifications API (`frontend/src/lib/notifications.ts`, `components/NotificationPrompt.tsx`).**
+One-shot permission banner appears the first time a wallet connects, then never re-prompts (dismiss flag in localStorage). Once granted, every page load runs `checkAndNotifyFinalized(userAddress)` which polls `list_papers`, diffs against a per-browser snapshot, and fires a native OS notification when any paper AUTHORED BY the user just transitioned from OPEN/REVIEWING to FINALIZED or FAILED. Notifications carry the verdict text and paper title. Silent-safe when the API is unsupported (Safari mobile) or denied. Notifications only fire for the connected user's own papers — outsiders' state changes never spam them.
+
+**Integration 3 — Social share bar (`frontend/src/components/ShareBar.tsx`).**
+New row on every paper detail page with four share targets:
+- **X / Twitter** — Twitter intent URL (`https://twitter.com/intent/tweet`) pre-populated with verdict emoji, paper title, field tag, `@genlayerlabs` mention, and paper URL.
+- **Farcaster / Warpcast** — Warpcast compose intent (`https://warpcast.com/~/compose`) with the same text.
+- **Copy Link** — `navigator.clipboard.writeText` with a 1.5s check-mark confirmation.
+- **Native share** — Web Share API (`navigator.share`) button surfaces only on mobile browsers that support it.
+
+None of the share targets require user authentication or leak the connected wallet address.
+
 ### Milestone Phase 2 — Actor Insights: Analytics Dashboard + Profile Pages (2026-08-28)
 **Type:** Major feature (Loại 3) — two new full pages that expose entirely new views over existing on-chain data.
 **No contract redeploy required.** Pure client aggregation over `list_papers`, `get_review`, and `ReputationLedger.score`.

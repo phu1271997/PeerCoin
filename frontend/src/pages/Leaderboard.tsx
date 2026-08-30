@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Trophy, Medal, Star, Cpu } from 'lucide-react';
 import { makeClient, CONTRACT_ADDRESS, REPUTATION_ADDRESS } from '../lib/client';
+import { AddressLabel } from '../components/AddressLabel';
 
 interface LeaderboardProps {
   account: `0x${string}` | null;
@@ -119,7 +120,9 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ account, onNavigate })
                     </div>
 
                     <div className="min-w-0">
-                      <div className="font-mono text-sm font-semibold text-slate-200 truncate group-hover:text-teal-300 transition">{r.address}</div>
+                      <div className="font-mono text-sm font-semibold text-slate-200 truncate group-hover:text-teal-300 transition">
+                        <AddressLabel address={r.address} showFull />
+                      </div>
                     </div>
                   </div>
 

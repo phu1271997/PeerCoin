@@ -4,6 +4,7 @@ import {
   CheckCircle2, XCircle, RefreshCw, ExternalLink,
 } from 'lucide-react';
 import { makeClient, CONTRACT_ADDRESS, REPUTATION_ADDRESS } from '../lib/client';
+import { AddressLabel } from '../components/AddressLabel';
 
 interface AnalyticsProps {
   account: `0x${string}` | null;
@@ -239,7 +240,9 @@ export const Analytics: React.FC<AnalyticsProps> = ({ account, onNavigate }) => 
                   <span className="w-6 h-6 rounded-full bg-teal-500/10 border border-teal-500/30 text-teal-400 text-[11px] font-bold flex items-center justify-center font-mono flex-shrink-0">
                     {idx + 1}
                   </span>
-                  <span className="text-xs font-mono text-slate-200 truncate group-hover:text-teal-300">{addr}</span>
+                  <span className="text-xs font-mono text-slate-200 truncate group-hover:text-teal-300">
+                    <AddressLabel address={addr} />
+                  </span>
                 </div>
                 <div className="flex items-center space-x-2 flex-shrink-0">
                   <span className="text-xs font-mono text-slate-400">{count} paper{count === 1 ? '' : 's'}</span>

@@ -1,0 +1,9 @@
+Phase 1 — UX Overhaul & Discovery Bundle. No contract redeploy; all frontend + newly-exposed access to a previously dead method.
+
+Landing page rewritten with 5 new sections: live stats bar (preprints, reviewers, GEN staked, finalized), "The Problem" (replication crisis / unpaid review / preprint gap), "How It Works" 4-step flow with a worked example tracing GEN through pass/fail/borderline branches, "Why GenLayer" tech cards showing each nondet API call, "How to Participate" role tabs (Author/Reviewer/Trigger), 6-item FAQ, resources footer.
+
+New Sponsor.tsx page — first UI caller for sponsor_bounty(paper_id), previously a Gate 1 gap (0 grep hits in frontend).
+
+Discovery filters: state chips (OPEN/REVIEWING/FINALIZED/FAILED) with live counts, newest-first sort, per-card Explorer link, copy-to-clipboard on author address.
+
+Wallet lifecycle rewrite: eth_accounts + accountsChanged/chainChanged listeners. SPA routing via vercel.json. Open Graph + Twitter meta tags for social share.

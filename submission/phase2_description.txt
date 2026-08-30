@@ -1,0 +1,7 @@
+Phase 2 — Actor Insights: Analytics Dashboard + Profile Pages. No contract redeploy; pure client aggregation over list_papers, get_review, ReputationLedger.score.
+
+New Analytics.tsx: 4 KPIs (preprints, distinct reviewers with alignment rate, GEN escrowed with bounty split, AI verdicts with ACCEPT/REJECT split), verdict bars (ACCEPT / REJECT / BORDERLINE percentages), preprints-by-field chart, average rigor for ACCEPT vs REJECT, top-5 authors with click-through, explorer links.
+
+New Profile.tsx polymorphic page: classifier badge (Author / Reviewer / Both / Observer) from on-chain activity, 5-tier reputation badge (MISALIGNED / NEWCOMER / CONTRIBUTOR / TRUSTED / ESTABLISHED), self-badge when connected, 4 stats, "As Author" and "As Reviewer" sections with per-item outcome badges.
+
+Wired click-to-profile from PaperDetail author, reviewer rows, Leaderboard entries, Analytics top authors. Header nav gets Analytics tab. No chart library — inline CSS bars keep bundle lean.

@@ -10,7 +10,9 @@ import { Leaderboard } from './pages/Leaderboard';
 import { Analytics } from './pages/Analytics';
 import { Profile } from './pages/Profile';
 import { OnboardingModal } from './components/OnboardingModal';
+import { NotificationPrompt } from './components/NotificationPrompt';
 import { connectWallet } from './lib/wallet';
+import { checkAndNotifyFinalized } from './lib/notifications';
 
 export const App: React.FC = () => {
   const [account, setAccount] = useState<`0x${string}` | null>(null);
@@ -51,6 +53,14 @@ export const App: React.FC = () => {
     }
   };
 
+  // Check for finalize state transitions once per page load and fire browser
+  // notifications for any of the connected user's papers that just landed a
+  // verdict. Silent-safe when Notifications API is denied or unsupported.
+  useEffect(() => {
+    if (!account) return;
+    checkAndNotifyFinalized(account);
+  }, [account]);
+
   const handleNavigate = (page: string, arg?: string) => {
     setCurrentPage(page);
     if (arg !== undefined) {
@@ -66,6 +76,7 @@ export const App: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100 font-sans">
       <OnboardingModal />
+      {account && <NotificationPrompt />}
       <Header
         account={account}
         onConnect={handleConnect}

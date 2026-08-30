@@ -1,5 +1,6 @@
 import React from 'react';
 import { Wallet, CheckCircle2 } from 'lucide-react';
+import { AddressLabel } from './AddressLabel';
 
 interface ConnectWalletProps {
   account: `0x${string}` | null;
@@ -11,7 +12,7 @@ export const ConnectWallet: React.FC<ConnectWalletProps> = ({ account, onConnect
     return (
       <div className="flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 font-mono text-xs text-slate-200">
         <CheckCircle2 className="w-4 h-4 text-teal-400" />
-        <span>{account.slice(0, 6)}...{account.slice(-4)}</span>
+        <AddressLabel address={account} />
       </div>
     );
   }
