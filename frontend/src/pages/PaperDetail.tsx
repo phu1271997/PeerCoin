@@ -222,18 +222,26 @@ export const PaperDetail: React.FC<PaperDetailProps> = ({ paperId, account, onNa
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t border-slate-800">
           <div>
             <div className="text-xs text-slate-500">Author</div>
-            <button
-              onClick={() => copyToClipboard(paper.author, 'author')}
-              className="flex items-center space-x-1 text-xs font-mono font-semibold text-slate-200 truncate hover:text-teal-300 transition group"
-              title="Copy author address"
-            >
-              <span className="truncate">{paper.author}</span>
-              {copiedField === 'author' ? (
-                <Check className="w-3 h-3 text-emerald-400 flex-shrink-0" />
-              ) : (
-                <Copy className="w-3 h-3 opacity-50 group-hover:opacity-100 flex-shrink-0" />
-              )}
-            </button>
+            <div className="flex items-center space-x-1">
+              <button
+                onClick={() => onNavigate('profile', paper.author)}
+                className="text-xs font-mono font-semibold text-slate-200 truncate hover:text-teal-300 transition"
+                title="Open author profile"
+              >
+                {paper.author}
+              </button>
+              <button
+                onClick={() => copyToClipboard(paper.author, 'author')}
+                className="text-slate-500 hover:text-teal-400 transition flex-shrink-0"
+                title="Copy author address"
+              >
+                {copiedField === 'author' ? (
+                  <Check className="w-3 h-3 text-emerald-400" />
+                ) : (
+                  <Copy className="w-3 h-3" />
+                )}
+              </button>
+            </div>
           </div>
           <div>
             <div className="text-xs text-slate-500">Author Stake</div>
@@ -308,7 +316,13 @@ export const PaperDetail: React.FC<PaperDetailProps> = ({ paperId, account, onNa
               <div key={idx} className="p-5 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
                   <div className="flex items-center space-x-3 mb-2">
-                    <span className="text-xs font-mono text-slate-400">{r.reviewer}</span>
+                    <button
+                      onClick={() => onNavigate('profile', r.reviewer)}
+                      className="text-xs font-mono text-slate-400 hover:text-teal-300 transition truncate"
+                      title="Open reviewer profile"
+                    >
+                      {r.reviewer}
+                    </button>
                     <span className="px-2 py-0.5 rounded bg-slate-800 text-teal-300 font-mono text-xs">
                       Verdict: {r.verdict}
                     </span>

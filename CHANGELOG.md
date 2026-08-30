@@ -4,6 +4,38 @@ All notable changes to the PeerCoin project will be documented in this file. For
 
 ## [Unreleased]
 
+### Milestone Phase 2 — Actor Insights: Analytics Dashboard + Profile Pages (2026-08-28)
+**Type:** Major feature (Loại 3) — two new full pages that expose entirely new views over existing on-chain data.
+**No contract redeploy required.** Pure client aggregation over `list_papers`, `get_review`, and `ReputationLedger.score`.
+
+**New: Analytics Dashboard (`frontend/src/pages/Analytics.tsx`, 300+ LOC).**
+Network-wide view aggregating every paper + every reviewer:
+- 4 KPIs at the top: total preprints (+ finalized count), distinct reviewers (+ alignment rate), author stake escrowed (+ bounty pool total), AI verdicts issued (+ ACCEPT/REJECT split).
+- Verdict distribution chart — horizontal bar breakdown of ACCEPT / REJECT / BORDERLINE with percentages, rendered inline as SVG-free CSS bars (no chart library, keeps the bundle at 800 kB pre-gzip).
+- Preprints by academic field — sorted horizontal bar chart with counts.
+- Average AI rigor score by verdict — side-by-side comparison of ACCEPT-avg vs REJECT-avg with sample counts.
+- Most active authors — top-5 leaderboard with click-through to their profile page.
+- "Data sources" footer with direct explorer links to `PeerCoinCore.list_papers()` and `ReputationLedger.score()` so viewers can independently reproduce every number.
+
+**New: Profile Page (`frontend/src/pages/Profile.tsx`, 260+ LOC).**
+Polymorphic actor page — one URL for any address. Discovers everything on-chain about that identity:
+- Classifier badge — Author / Reviewer / Author & Reviewer / Observer — computed from actual on-chain activity, not self-declared.
+- Reputation tier badge with 5 tiers: MISALIGNED (score < 0), NEWCOMER (0), CONTRIBUTOR (1–9), TRUSTED (10–24), ESTABLISHED (≥25).
+- "That's you" self-badge when connected wallet matches.
+- 4 stats: reputation score, papers authored, reviews submitted, alignment rate.
+- "As Author" section — every paper by this address with stake, state, and AI verdict badge; click-through to paper detail.
+- "As Reviewer" section — every review by this address with verdict, confidence, and Aligned (+5) / Misaligned (-3) outcome badge.
+
+**Navigation wiring — click any address, land on its profile:**
+- Header nav: new Analytics tab (BarChart3 icon).
+- PaperDetail: author address is now a button linking to the author's profile, with copy-to-clipboard as a secondary icon (was a single ambiguous copy button).
+- PaperDetail: each reviewer row's address is now a button linking to that reviewer's profile.
+- Leaderboard: entire row is a button linking to the ranked reviewer's profile.
+- Analytics: "Most active authors" rows link to the author's profile.
+
+**Router:**
+- `App.tsx` now handles `analytics` and `profile` routes. `handleNavigate` extended to accept either `paperId` or `address` as the second arg depending on target page.
+
 ### Milestone Phase 1 — UX Overhaul & Discovery Bundle (2026-08-27)
 **Type:** Major feature (Loại 3) + UX overhaul (Loại 7) + new contract functionality exposed (Loại 8).
 **No contract redeploy required.** All work is frontend + newly-exposed access to a previously dead-code contract method.

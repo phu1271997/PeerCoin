@@ -4,10 +4,10 @@ import { makeClient, CONTRACT_ADDRESS, REPUTATION_ADDRESS } from '../lib/client'
 
 interface LeaderboardProps {
   account: `0x${string}` | null;
-  onNavigate: (page: string) => void;
+  onNavigate: (page: string, arg?: string) => void;
 }
 
-export const Leaderboard: React.FC<LeaderboardProps> = ({ account }) => {
+export const Leaderboard: React.FC<LeaderboardProps> = ({ account, onNavigate }) => {
   const [reviewers, setReviewers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -103,9 +103,13 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ account }) => {
               const isTop3 = idx === 2;
 
               return (
-                <div key={idx} className="py-4 flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${
+                <button
+                  key={idx}
+                  onClick={() => onNavigate('profile', r.address)}
+                  className="w-full py-4 flex items-center justify-between hover:bg-slate-800/40 rounded-lg px-2 -mx-2 transition text-left group"
+                >
+                  <div className="flex items-center space-x-4 min-w-0">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs flex-shrink-0 ${
                       isTop1 ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' :
                       isTop2 ? 'bg-slate-300/20 text-slate-200 border border-slate-400/40' :
                       isTop3 ? 'bg-amber-700/20 text-amber-600 border border-amber-600/40' :
@@ -114,19 +118,19 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ account }) => {
                       {isTop1 ? <Trophy className="w-4 h-4" /> : isTop2 ? <Medal className="w-4 h-4" /> : isTop3 ? <Star className="w-4 h-4" /> : `#${idx + 1}`}
                     </div>
 
-                    <div>
-                      <div className="font-mono text-sm font-semibold text-slate-200">{r.address}</div>
+                    <div className="min-w-0">
+                      <div className="font-mono text-sm font-semibold text-slate-200 truncate group-hover:text-teal-300 transition">{r.address}</div>
                     </div>
                   </div>
 
-                  <div className="text-right">
+                  <div className="text-right flex-shrink-0 ml-3">
                     <div className={`text-lg font-bold font-mono ${
                       r.score > 0 ? 'text-emerald-400' : r.score < 0 ? 'text-rose-400' : 'text-slate-400'
                     }`}>
                       {r.score > 0 ? `+${r.score}` : r.score} pts
                     </div>
                   </div>
-                </div>
+                </button>
               );
             })}
           </div>

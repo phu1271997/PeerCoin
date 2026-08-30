@@ -1,6 +1,6 @@
 import React from 'react';
 import { ConnectWallet } from './ConnectWallet';
-import { FileText, Award, PlusCircle, Home } from 'lucide-react';
+import { FileText, Award, PlusCircle, Home, BarChart3 } from 'lucide-react';
 
 interface HeaderProps {
   account: `0x${string}` | null;
@@ -63,6 +63,17 @@ export const Header: React.FC<HeaderProps> = ({ account, onConnect, currentPage,
           >
             <Award className="w-4 h-4" />
             <span>Leaderboard</span>
+          </button>
+          <button
+            onClick={() => onNavigate('analytics')}
+            className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium transition ${
+              currentPage === 'analytics'
+                ? 'bg-slate-800 text-teal-400 border border-slate-700'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+            }`}
+          >
+            <BarChart3 className="w-4 h-4" />
+            <span>Analytics</span>
           </button>
         </nav>
 

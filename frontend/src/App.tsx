@@ -7,6 +7,8 @@ import { SubmitReview } from './pages/SubmitReview';
 import { Finalize } from './pages/Finalize';
 import { Sponsor } from './pages/Sponsor';
 import { Leaderboard } from './pages/Leaderboard';
+import { Analytics } from './pages/Analytics';
+import { Profile } from './pages/Profile';
 import { OnboardingModal } from './components/OnboardingModal';
 import { connectWallet } from './lib/wallet';
 
@@ -14,6 +16,7 @@ export const App: React.FC = () => {
   const [account, setAccount] = useState<`0x${string}` | null>(null);
   const [currentPage, setCurrentPage] = useState<string>('home');
   const [activePaperId, setActivePaperId] = useState<string>('0');
+  const [activeAddress, setActiveAddress] = useState<string>('');
 
   useEffect(() => {
     if (!window.ethereum) return;
@@ -48,10 +51,14 @@ export const App: React.FC = () => {
     }
   };
 
-  const handleNavigate = (page: string, paperId?: string) => {
+  const handleNavigate = (page: string, arg?: string) => {
     setCurrentPage(page);
-    if (paperId !== undefined) {
-      setActivePaperId(paperId);
+    if (arg !== undefined) {
+      if (page === 'profile') {
+        setActiveAddress(arg);
+      } else {
+        setActivePaperId(arg);
+      }
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -87,6 +94,12 @@ export const App: React.FC = () => {
         )}
         {currentPage === 'leaderboard' && (
           <Leaderboard account={account} onNavigate={handleNavigate} />
+        )}
+        {currentPage === 'analytics' && (
+          <Analytics account={account} onNavigate={handleNavigate} />
+        )}
+        {currentPage === 'profile' && (
+          <Profile address={activeAddress} account={account} onNavigate={handleNavigate} />
         )}
       </main>
 
