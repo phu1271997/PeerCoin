@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Trophy, Medal, Star, Cpu } from 'lucide-react';
 import { makeClient, CONTRACT_ADDRESS, REPUTATION_ADDRESS } from '../lib/client';
 import { AddressLabel } from '../components/AddressLabel';
+import { TierBadge } from '../components/TierBadge';
 
 interface LeaderboardProps {
   account: `0x${string}` | null;
@@ -42,18 +43,37 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ account, onNavigate })
         }
       }
 
-      // 2. Query ReputationLedger contract on studionet for each reviewer
+      // 2. Query ReputationLedger contract on studionet.
+      //    v0.3 adds batch_profile — one call replaces N sequential eth_calls.
       const reviewerList = Array.from(reviewerMap.values());
-      for (const r of reviewerList) {
+      if (reviewerList.length > 0) {
+        const addrsCsv = reviewerList.map((r) => r.address).join(',');
         try {
-          const score = await client.readContract({
+          const batch = await client.readContract({
             address: REPUTATION_ADDRESS,
-            functionName: 'score',
-            args: [r.address],
-          });
-          r.score = typeof score === 'number' ? score : parseInt(String(score || 0));
+            functionName: 'batch_profile',
+            args: [addrsCsv],
+          }) as any;
+          const profiles = batch?.profiles || {};
+          for (const r of reviewerList) {
+            const p = profiles[r.address];
+            if (p) r.score = typeof p.score === 'number' ? p.score : parseInt(String(p.score || 0));
+          }
         } catch (e) {
-          console.error(`Error querying reputation for ${r.address}:`, e);
+          // Fallback if v0.3 view missing (old deploy) — read score() one by one.
+          console.warn('batch_profile not available, falling back to per-address score()', e);
+          for (const r of reviewerList) {
+            try {
+              const score = await client.readContract({
+                address: REPUTATION_ADDRESS,
+                functionName: 'score',
+                args: [r.address],
+              });
+              r.score = typeof score === 'number' ? score : parseInt(String(score || 0));
+            } catch (err) {
+              console.error(`Error querying reputation for ${r.address}:`, err);
+            }
+          }
         }
       }
 
@@ -119,10 +139,11 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ account, onNavigate })
                       {isTop1 ? <Trophy className="w-4 h-4" /> : isTop2 ? <Medal className="w-4 h-4" /> : isTop3 ? <Star className="w-4 h-4" /> : `#${idx + 1}`}
                     </div>
 
-                    <div className="min-w-0">
+                    <div className="min-w-0 space-y-1">
                       <div className="font-mono text-sm font-semibold text-slate-200 truncate group-hover:text-teal-300 transition">
                         <AddressLabel address={r.address} showFull />
                       </div>
+                      <TierBadge score={r.score} />
                     </div>
                   </div>
 

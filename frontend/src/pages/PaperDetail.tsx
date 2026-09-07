@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, ExternalLink, UserCheck, Play, Award, AlertTriangle, RefreshCw, TrendingUp, Copy, Check } from 'lucide-react';
+import { ArrowLeft, ExternalLink, UserCheck, Play, Award, AlertTriangle, RefreshCw, TrendingUp, Copy, Check, Gavel } from 'lucide-react';
 import { makeClient, CONTRACT_ADDRESS } from '../lib/client';
 import { VerdictCard } from '../components/VerdictCard';
 import { ShareBar } from '../components/ShareBar';
 import { AddressLabel } from '../components/AddressLabel';
+import { AppealCard } from '../components/AppealCard';
 
 interface PaperDetailProps {
   paperId: string;
@@ -83,7 +84,7 @@ export const PaperDetail: React.FC<PaperDetailProps> = ({ paperId, account, onNa
     }
   };
 
-  const handleClaim = async () => {
+  const handleClaim = async (fn: 'claim' | 'claim_appeal' = 'claim') => {
     if (!account) return;
     setClaiming(true);
     setClaimStatus(null);
@@ -91,7 +92,7 @@ export const PaperDetail: React.FC<PaperDetailProps> = ({ paperId, account, onNa
       const client = makeClient(account);
       const tx = await client.writeContract({
         address: CONTRACT_ADDRESS,
-        functionName: 'claim',
+        functionName: fn,
         args: [paperId],
         value: 0n,
       }) as any;
@@ -100,7 +101,7 @@ export const PaperDetail: React.FC<PaperDetailProps> = ({ paperId, account, onNa
         await client.waitForTransactionReceipt({ hash: tx as any });
       }
 
-      setClaimStatus('Rewards claimed successfully on studionet!');
+      setClaimStatus(`${fn === 'claim_appeal' ? 'Appeal payout' : 'Rewards'} claimed successfully on studionet!`);
       fetchPaperData(0);
     } catch (err: any) {
       setClaimStatus(`Claim failed: ${err?.message || 'Transaction error'}`);
@@ -149,6 +150,10 @@ export const PaperDetail: React.FC<PaperDetailProps> = ({ paperId, account, onNa
 
   const isFinalized = paper.state === 'FINALIZED';
   const isFailed = paper.state === 'FAILED';
+  const isAppealed = paper.state === 'APPEALED';
+  const isAuthor = !!account && account.toLowerCase() === paper.author.toLowerCase();
+  const isRejected = paper.ai_verdict === 'REJECT';
+  const hasAppeal = paper.appeal != null;
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
@@ -273,7 +278,7 @@ export const PaperDetail: React.FC<PaperDetailProps> = ({ paperId, account, onNa
       />
 
       {/* AI Jury Verdict Card */}
-      {isFinalized && (
+      {(isFinalized || isFailed || isAppealed) && paper.ai_verdict && (
         <VerdictCard
           verdict={paper.ai_verdict}
           rigor={paper.ai_rigor}
@@ -281,6 +286,38 @@ export const PaperDetail: React.FC<PaperDetailProps> = ({ paperId, account, onNa
           reproducibility={paper.ai_reproduc}
           reason={paper.ai_reason}
         />
+      )}
+
+      {/* Appeal Court block — status card if appealed, File Appeal button if eligible */}
+      {hasAppeal && (
+        <AppealCard
+          paperId={paper.id}
+          appeal={paper.appeal}
+          account={account}
+          onResolved={() => fetchPaperData(0)}
+        />
+      )}
+
+      {!hasAppeal && isFailed && isRejected && isAuthor && (
+        <div className="p-6 rounded-2xl bg-slate-900 border border-amber-500/40 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div>
+            <h3 className="text-base font-bold text-slate-100 mb-1 flex items-center space-x-2">
+              <Gavel className="w-5 h-5 text-amber-400" />
+              <span>Disagree with the REJECT verdict?</span>
+            </h3>
+            <p className="text-xs text-slate-400 max-w-md">
+              File an appeal. A second AI Jury will re-review the paper with an <span className="text-amber-300">adversarial-skeptic</span> prompt
+              and a distinct APPEAL canary token. Overturn = your appeal stake back + 10% bounty bonus. Upheld = stake burned to bounty.
+            </p>
+          </div>
+          <button
+            onClick={() => onNavigate('file-appeal', paper.id)}
+            className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-bold text-xs hover:opacity-90 transition inline-flex items-center space-x-1.5 flex-shrink-0"
+          >
+            <Gavel className="w-3.5 h-3.5" />
+            <span>File Appeal</span>
+          </button>
+        </div>
       )}
 
       {/* Claim Rewards Panel */}
@@ -293,6 +330,7 @@ export const PaperDetail: React.FC<PaperDetailProps> = ({ paperId, account, onNa
             </h3>
             <p className="text-xs text-slate-400">
               Aligned reviewers receive their 20 GEN stake + share of non-aligned reviewer stakes & bounty pool.
+              {hasAppeal && paper.appeal.overturned && ' Author of an OVERTURNED paper must use the appeal claim below.'}
             </p>
             {claimStatus && (
               <p className="text-xs text-emerald-400 font-mono mt-2">{claimStatus}</p>
@@ -300,11 +338,33 @@ export const PaperDetail: React.FC<PaperDetailProps> = ({ paperId, account, onNa
           </div>
 
           <button
-            onClick={handleClaim}
+            onClick={() => handleClaim('claim')}
             disabled={claiming || !account}
             className="px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-emerald-500 text-slate-950 font-bold text-sm hover:opacity-90 transition disabled:opacity-50 flex-shrink-0"
           >
             {claiming ? 'Claiming...' : 'Claim Stake + Bounty'}
+          </button>
+        </div>
+      )}
+
+      {/* Appeal-specific claim (OVERTURNED authors) */}
+      {isFinalized && hasAppeal && paper.appeal.overturned && !paper.appeal.claimed && isAuthor && (
+        <div className="p-6 rounded-2xl bg-gradient-to-br from-slate-900 to-emerald-950/20 border border-emerald-500/40 flex flex-col md:flex-row items-center justify-between gap-4">
+          <div>
+            <h3 className="text-base font-bold text-emerald-200 mb-1 flex items-center space-x-2">
+              <Gavel className="w-5 h-5 text-emerald-400" />
+              <span>Claim Overturned Appeal — Stake + Bonus</span>
+            </h3>
+            <p className="text-xs text-slate-400">
+              Adversarial re-jury flipped this to ACCEPT. Collect your appeal stake back plus the bounty-funded win bonus.
+            </p>
+          </div>
+          <button
+            onClick={() => handleClaim('claim_appeal')}
+            disabled={claiming || !account}
+            className="px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-bold text-sm hover:opacity-90 transition disabled:opacity-50 flex-shrink-0"
+          >
+            {claiming ? 'Claiming...' : 'Claim Appeal Payout'}
           </button>
         </div>
       )}

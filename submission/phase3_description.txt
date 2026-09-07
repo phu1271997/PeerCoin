@@ -1,0 +1,7 @@
+Phase 3 — External Reach Bundle: ENS + Browser Notifications + Social Share. Three integrations, no contract redeploy; all frontend edge.
+
+ENS (lib/ens.ts): viem public mainnet client reverse-resolves every wallet address. Session cache + de-duplicated in-flight promises. New AddressLabel renders ENS or shortened hex, keeps full hex on hover. Wired into Header chip, PaperDetail author + reviewer rows, Profile, Leaderboard, Analytics top authors.
+
+Browser Notifications (lib/notifications.ts + NotificationPrompt): one-shot permission banner after wallet connect; never re-prompts. Once granted, every page load diffs list_papers against a localStorage snapshot and fires a native OS notification when any paper AUTHORED BY the user just transitioned to FINALIZED or FAILED. Only the user's own papers.
+
+Social share bar on PaperDetail (ShareBar): X / Twitter intent, Farcaster Warpcast compose intent, copy link, Web Share API native share. No auth, does not leak the connected wallet.

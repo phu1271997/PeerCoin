@@ -1,0 +1,13 @@
+Phase 3 — Governance Layer v1: Appeal Court + Adversarial Re-Jury + Tiered Reputation.
+
+REDEPLOYED core + reputation contracts on studionet (v0.2.16 → v0.3). Bundle:
+
+APPEAL COURT. New `Appeal` dataclass + TreeMap in PeerCoinCore. `file_appeal(paper_id)` — payable, author-only, stake = 2× author stake, within 7-day window after finalize, one appeal per paper, REJECT verdicts only (BORDERLINE requires resubmit). Paper state → APPEALED, claims frozen. `resolve_appeal(paper_id)` — anyone triggers, runs a SECOND `gl.vm.run_nondet` consensus against a distinct APPEAL canary token with an adversarial prompt that instructs the LLM to steelman the appellant. If new avg ≥ pass threshold → verdict flips to ACCEPT, paper → FINALIZED, appellant gets stake refund + 10% bounty bonus via `claim_appeal`. If upheld → stake burned into bounty. Reviewers who originally voted ACCEPT get a make-good +8 rep on overturn; reviewers aligned with the wrong REJECT get an extra -5 slash. New views `get_appeal` + `list_appeals`.
+
+TIERED REPUTATION. ReputationLedger expanded 43 → 130 LOC. Tier boundaries: PROBATION (<0), NOVICE (0-99), TRUSTED (100-299), EXPERT (300-799), LEGENDARY (800+). New views `tier`, `profile` (score+tier+points_to_next_tier), `batch_profile` (up to 200 addrs in one call — replaces N sequential eth_calls on Leaderboard), `tier_stats` (governance dashboard).
+
+FRONTEND. New pages `/appeals` (public docket) and `/file-appeal/:id` (economics-driven stake form). New components `AppealCard` (three-state: PENDING with trigger button, OVERTURNED, UPHELD) and `TierBadge` (emoji + tooltip + next-tier hint). PaperDetail wires appeal card + "File Appeal" CTA on FAILED+REJECT (author only) + separate "Claim Overturned Appeal" button. Header adds Appeals nav. Leaderboard uses `batch_profile` with fallback. Profile uses shared `lib/reputation.ts` tier math — single source of truth with contract.
+
+SECURITY. Distinct APPEAL_CANARY_TOKEN blocks main-jury response replay against appeal validator. Prompt-injection defense (untrusted-doc tags) carried over. Malformed appeal payload conservatively UPHOLDS. Claims frozen while state=APPEALED. Overturned author forced to `claim_appeal` path (guard in classic `claim`) so appeal-stake portion cannot be silently dropped.
+
+TESTS. +24 pure-function tests (42 → 66 total). Tier boundary + monotonicity, appeal canary distinctness, `_validate_appeal_output` against all failure modes, appeal prompt shape assertions, bonus math pinned to 1000 bps, cross-check that appeal validator agrees with main-jury `_derive_verdict` on identical scores.

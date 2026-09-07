@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { makeClient, CONTRACT_ADDRESS, REPUTATION_ADDRESS } from '../lib/client';
 import { AddressLabel } from '../components/AddressLabel';
+import { tierFromScore } from '../lib/reputation';
 
 interface ProfileProps {
   address: string;
@@ -116,7 +117,7 @@ export const Profile: React.FC<ProfileProps> = ({ address, account, onNavigate }
     } catch { /* silent */ }
   };
 
-  const tier = reputationTier(reputation);
+  const tier = tierFromScore(reputation);
   const isSelf = account && account.toLowerCase() === address.toLowerCase();
 
   if (loading) {
@@ -155,9 +156,17 @@ export const Profile: React.FC<ProfileProps> = ({ address, account, onNavigate }
                     That's you
                   </span>
                 )}
-                <span className={`text-[11px] px-2 py-0.5 rounded-full border font-mono ${tier.badgeClass}`}>
-                  {tier.name}
+                <span
+                  className={`text-[11px] px-2 py-0.5 rounded-full border font-mono ${tier.badgeClass}`}
+                  title={tier.description}
+                >
+                  <span aria-hidden>{tier.emoji}</span> {tier.name}
                 </span>
+                {tier.toNext !== null && (
+                  <span className="text-[10px] text-slate-500 font-mono">
+                    · {tier.toNext} pts to next tier
+                  </span>
+                )}
               </div>
               <div className="text-sm font-mono font-semibold text-slate-200 truncate">
                 <AddressLabel address={address} showFull />
@@ -254,14 +263,6 @@ const classifyActor = (papers: number, reviews: number): string => {
   if (papers > 0) return 'Author';
   if (reviews > 0) return 'Reviewer';
   return 'Observer';
-};
-
-const reputationTier = (score: number): { name: string; badgeClass: string } => {
-  if (score >= 25) return { name: 'ESTABLISHED', badgeClass: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' };
-  if (score >= 10) return { name: 'TRUSTED', badgeClass: 'bg-teal-500/10 text-teal-400 border-teal-500/30' };
-  if (score >= 1) return { name: 'CONTRIBUTOR', badgeClass: 'bg-slate-500/10 text-slate-300 border-slate-500/30' };
-  if (score === 0) return { name: 'NEWCOMER', badgeClass: 'bg-slate-800 text-slate-400 border-slate-700' };
-  return { name: 'MISALIGNED', badgeClass: 'bg-rose-500/10 text-rose-400 border-rose-500/30' };
 };
 
 const ProfileStat: React.FC<{ icon: React.ReactNode; label: string; value: string; highlight?: boolean }> = ({ icon, label, value, highlight }) => (

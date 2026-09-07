@@ -25,24 +25,37 @@ GenLayer's Optimistic Democracy consensus embeds LLM inference directly into val
 
 ## 3. Architecture & Topology
 
-PeerCoin uses a multi-contract architecture to separate core review lifecycle logic from long-term reviewer reputation metrics:
+PeerCoin uses a multi-contract architecture to separate core review lifecycle logic from long-term reviewer reputation metrics. **v0.3 (Governance Layer)** adds an Appeal Court on top of the same address:
 
 ```
-                       ┌───────────────────────┐
-                       │   PeerCoinCore        │
-Author, Reviewer ─────►│                       │
-                       │  - submit_paper       │
-                       │  - submit_review      │
-                       │  - finalize (nondet)  │
-                       │  - claim              │
-                       └──────────┬────────────┘
+                       ┌────────────────────────────────┐
+                       │   PeerCoinCore v0.3            │
+Author, Reviewer ─────►│                                │
+                       │  Review lifecycle              │
+                       │   - submit_paper               │
+                       │   - submit_review              │
+                       │   - finalize (nondet AI jury)  │
+                       │   - claim                      │
+                       │                                │
+Author (contested) ───►│  Appeal Court (new)            │
+                       │   - file_appeal (payable)      │
+                       │   - resolve_appeal             │
+                       │       (adversarial re-jury,    │
+                       │        distinct canary token)  │
+                       │   - claim_appeal               │
+                       │   - list_appeals / get_appeal  │
+                       └──────────┬─────────────────────┘
                                   │ gl.get_contract_at(rep_addr)
                                   ▼
-                       ┌───────────────────────┐
-                       │  ReputationLedger     │
-                       │  - bump(reviewer, +/-)│
-                       │  - score(reviewer)    │
-                       └──────────?────────────┘
+                       ┌────────────────────────────────┐
+                       │  ReputationLedger v0.3         │
+                       │   - bump(reviewer, +/-)        │
+                       │   - score(reviewer)            │
+                       │   - tier(reviewer)   (new)     │
+                       │   - profile(reviewer) (new)    │
+                       │   - batch_profile(csv) (new)   │
+                       │   - tier_stats() (new)         │
+                       └────────────────────────────────┘
 ```
 
 - **`PeerCoinCore`** ([`contracts/peercoin_core.py`](file:///Users/peter/Downloads/AI/Genlayer/6-PeerCoin/contracts/peercoin_core.py)): Manages paper submissions, reviewer stakes, non-deterministic AI jury adjudication (`gl.vm.run_nondet`), and pull-payment claim distributions.
@@ -66,10 +79,19 @@ Detailed deployment instructions are available in [`scripts/deploy.md`](file:///
 
 ## 5. Deployed Contract Addresses (Studionet)
 
-| Contract | Network | Address | Explorer Link |
+**v0.3 — Governance Layer (current, live).** After redeploying with the two new appeal constructor params, fill these rows in and update `frontend/.env`.
+
+| Contract | Version | Network | Address | Explorer Link |
+|---|---|---|---|---|
+| `PeerCoinCore` | v0.3 | studionet | _(fill in after redeploy)_ | [Explorer](https://explorer-studio.genlayer.com) |
+| `ReputationLedger` | v0.3 | studionet | _(fill in after redeploy)_ | [Explorer](https://explorer-studio.genlayer.com) |
+
+**v0.2.16 — pre-appeal deployment (kept for reference, not wired to the current frontend).**
+
+| Contract | Version | Network | Address |
 |---|---|---|---|
-| `PeerCoinCore` | studionet | `0xCf08ec64514C131bFBEe21A1319C0D58630258D9` | [Explorer Tx](https://explorer-studio.genlayer.com) |
-| `ReputationLedger` | studionet | `0x0AEe9Fe2d39272eA73976Bcca4284EC6E9f1291E` | [Explorer Tx](https://explorer-studio.genlayer.com) |
+| `PeerCoinCore` | v0.2.16 | studionet | `0xCf08ec64514C131bFBEe21A1319C0D58630258D9` |
+| `ReputationLedger` | v0.2.16 | studionet | `0x0AEe9Fe2d39272eA73976Bcca4284EC6E9f1291E` |
 
 ---
 

@@ -9,6 +9,8 @@ import { Sponsor } from './pages/Sponsor';
 import { Leaderboard } from './pages/Leaderboard';
 import { Analytics } from './pages/Analytics';
 import { Profile } from './pages/Profile';
+import { Appeals } from './pages/Appeals';
+import { FileAppeal } from './pages/FileAppeal';
 import { OnboardingModal } from './components/OnboardingModal';
 import { NotificationPrompt } from './components/NotificationPrompt';
 import { connectWallet } from './lib/wallet';
@@ -111,6 +113,12 @@ export const App: React.FC = () => {
         )}
         {currentPage === 'profile' && (
           <Profile address={activeAddress} account={account} onNavigate={handleNavigate} />
+        )}
+        {currentPage === 'appeals' && (
+          <Appeals account={account} onNavigate={handleNavigate} />
+        )}
+        {currentPage === 'file-appeal' && (
+          <FileAppeal paperId={activePaperId} account={account} onNavigate={handleNavigate} />
         )}
       </main>
 

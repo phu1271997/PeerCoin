@@ -4,7 +4,64 @@ All notable changes to the PeerCoin project will be documented in this file. For
 
 ## [Unreleased]
 
-### Milestone Phase 3 — External Reach Bundle: ENS + Browser Notifications + Social Share (2026-08-29)
+### Milestone Phase 3 — Governance Layer v1: Appeal Court + Tiered Reputation + Adversarial Re-Jury (2026-09-07)
+**Type:** Major feature (Loại 3b) + Security/architecture improvement (Loại 5) + AI enhancement (Loại 1c). Bundle of three coordinated systems that overhaul how PeerCoin handles contested verdicts and reviewer trust.
+**Contract redeploy REQUIRED.** Schema change (new `Appeal` dataclass, new `TreeMap[str, Appeal]` storage, two new constructor params, five new write/view methods, expanded reputation ledger). Old core address kept for reference; frontend `VITE_CONTRACT_ADDRESS` and `VITE_REPUTATION_ADDRESS` need to point at the new deploy.
+
+**System 1 — Appeal Court (`contracts/peercoin_core.py`, +400 LOC).**
+Author of a paper landed in state `FAILED` with `ai_verdict = REJECT` can now challenge the verdict:
+- `file_appeal(paper_id_str)` payable — author-only, stake exactly `author_stake_amount × appeal_stake_multiplier` (default 2× = 200 GEN), within `appeal_window_secs` (default 7 days) of `finalized_at`, one appeal per paper, only appeals REJECT (BORDERLINE requires resubmission). Paper state → `APPEALED`, claims frozen until resolved.
+- `resolve_appeal(paper_id_str)` — anyone can trigger, runs a NEW adversarial re-jury via `gl.vm.run_nondet(leader_fn, validator_fn)`. If the new avg ≥ `pass_threshold_avg`, verdict flips to ACCEPT (paper → `FINALIZED`, `ai_verdict = "ACCEPT"`, `ai_reason` prefixed with `[OVERTURNED ON APPEAL]`); if below, appeal stake is burned into `bounty_pool` and paper returns to `FAILED`.
+- `claim_appeal(paper_id_str)` — separate claim path for overturned appellants that pays back the appeal stake plus a bounty-funded 10% (1000 bps) win bonus, kept distinct from `claim()` so an author who took the classic FINALIZED-ACCEPT path can't accidentally lose the appeal-stake portion.
+- `get_appeal`, `list_appeals(offset, limit)` — public views; `get_paper` now also carries an `appeal` sub-dict so PaperDetail can render appeal state in one round trip.
+
+**System 2 — Adversarial Re-Jury Prompt with Distinct Canary.**
+The appeal LLM prompt is architecturally different from the main jury, not just longer:
+- New `APPEAL_CANARY_TOKEN = "PC7-APPEAL-CANARY-4d7c8e2f-..."` — validators reject any response echoing the original `CANARY_TOKEN`. This blocks a replay attack where a leaked or captured main-jury response is fed to `resolve_appeal` to sneak an overturn through.
+- Instructions explicitly frame the jury as an "appeal court juror" and demand the LLM steelman the appellant, weight the ORIGINAL jury's cited reason critically ("was it a hard defect or a polish complaint?"), and only uphold if the paper really fails at `pass_threshold_avg`.
+- The prompt embeds the original verdict, avg score, and reason so the appeal jury re-evaluates in context, not blind.
+- Same leader/validator consensus pattern as main jury: canary check, verdict-vs-threshold consistency, ±15 avg-drift tolerance between leader and validator.
+- Defense-in-depth: `resolve_appeal` conservatively UPHOLDS if the canary is missing or malformed at settlement time. Overturn requires a clean adversarial-canary payload.
+
+**System 3 — Tiered Reputation (`contracts/reputation_ledger.py`, expanded 43 → 130 LOC).**
+Score-derived tier system that mirrors the frontend badge system:
+- Tiers: `PROBATION` (score < 0), `NOVICE` (0-99), `TRUSTED` (100-299), `EXPERT` (300-799), `LEGENDARY` (800+). Boundaries pinned by a shared `TIER_THRESHOLDS` constant used by both the contract's `tier()` view and the pure `_derive_tier()` helper (unit-tested with monotonicity assertion).
+- New `tier(addr)`, `profile(addr)` (score + tier + `points_to_next_tier`), `batch_profile(addrs_csv)` (one call, up to 200 addresses — replaces N sequential eth_calls on the Leaderboard), and `tier_stats()` (global counts per tier for governance dashboards).
+- Appeal-driven reputation adjustment in `resolve_appeal`: on OVERTURN, reviewers who ORIGINALLY voted ACCEPT (marked misaligned by the wrong REJECT and slashed -3) get a make-good `+8` bump — net +5 vs the original settle. Reviewers who voted REJECT (aligned with the mistake) take an additional `-5` slash on top of the original `+5` — net 0 for having been temporarily right about a wrong verdict. Their `aligned` flag flips accordingly so `claim()` pays the RIGHT people.
+
+**Frontend integration.**
+- New page `pages/Appeals.tsx` — public appeal docket, wired to `list_appeals`, with PENDING / OVERTURNED / UPHELD status chips and click-through to the paper.
+- New page `pages/FileAppeal.tsx` — appeal stake form with contract-driven economics (required stake, appeal window, win-bonus %) read from `get_config` so the UI never drifts from what the contract requires.
+- New component `components/AppealCard.tsx` — three-state card rendered on PaperDetail when an appeal exists (PENDING with a "Trigger Adversarial Re-Jury" button anyone can click, OVERTURNED green panel with the new jury's reasoning and refund math, UPHELD red panel showing the stake burn).
+- New component `components/TierBadge.tsx` + shared `lib/reputation.ts` with `tierFromScore(score)` — same tier math as the contract, wired into Leaderboard rows and Profile identity header. Emoji + tooltip carry the tier description and `points_to_next_tier`.
+- PaperDetail: "File Appeal" call-to-action on `FAILED` + `REJECT` papers when connected as the author; separate "Claim Overturned Appeal" button that calls `claim_appeal` so overturned authors collect stake + bonus without racing the classic `claim()` path.
+- Header: new "Appeals" nav tab (Gavel icon, amber accent).
+- Leaderboard: swapped N-sequential `score()` calls for a single `batch_profile` view call (falls back to per-address if the deploy is old).
+- Profile: removed the local ad-hoc tier function (5 tiers, incompatible thresholds) and replaced with the shared `tierFromScore` — one source of truth, and adds a "N pts to next tier" hint next to the badge.
+
+**Tests (`tests/test_appeal_and_tiers.py`, +24 test cases; 42 → 66 total).**
+- Tier boundary math: every threshold + monotonicity property test (score up → tier only ranks up).
+- Appeal canary distinctness: `APPEAL_CANARY_TOKEN != CANARY_TOKEN` and the appeal validator rejects the main-jury canary.
+- `_validate_appeal_output` — canary, verdict-vs-threshold consistency, non-dict, missing canary, non-numeric scores, invalid verdict token.
+- Appeal prompt shape: contains appeal canary, does NOT leak main canary, adversarial framing keywords, cites original verdict/reason, wraps untrusted content in `<UNTRUSTED_DOCUMENT>` tags (same prompt-injection defense as main jury).
+- Bonus math: `APPEAL_WIN_BONUS_BPS == 1000` (10%) and the bounty × bps ÷ 10000 formula matches contract.
+- Cross-check: appeal validator agrees with main-jury `_derive_verdict` on identical scores (would catch a divergent inline copy).
+
+**Security invariants nailed down.**
+- Only paper author can file an appeal (reviewers who lost stakes have no appeal path).
+- Only REJECT verdicts appealable — BORDERLINE + ACCEPT are not.
+- Appeal window enforced against `finalized_at` — an author who sits on a REJECT can't appeal months later once LLM behavior has drifted.
+- Exact stake required — no silent refund path (would open reentrancy surface).
+- One appeal per paper — no re-appeal loop.
+- Claims frozen while `state == APPEALED` — no draining author stake mid-appeal.
+- Distinct canary token blocks main-jury response replay against appeal validator.
+- Malformed appeal response conservatively UPHOLDS — never overturns on a garbage payload.
+- OVERTURNED author must use `claim_appeal` (guard in classic `claim` rejects with a clear error message) so the two payout paths cannot double-pay OR silently drop the appeal-stake portion.
+
+### Milestone Phase 3 (superseded) — External Reach Bundle: ENS + Browser Notifications + Social Share (2026-08-29, deferred)
+Superseded by Governance Layer v1 for the Phase 3 submission. The ENS resolver, notifications listener, and social share bar remain in the codebase and are candidate content for a later milestone.
+
+**Integration 1 — ENS resolution against Ethereum mainnet (`frontend/src/lib/ens.ts`).**
 **Type:** New integration (Loại 4) — three independent external integrations bundled into one milestone.
 **No contract redeploy required.** All integrations sit at the frontend edge.
 
