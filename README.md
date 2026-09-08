@@ -69,9 +69,11 @@ Author (contested) ───►│  Appeal Court (new)            │
 2. In Settings, select **Reset Storage** and perform a hard refresh (`Cmd+Shift+R`).
 3. Connect your MetaMask wallet and switch to **GenLayer Studio Network** (`chainId: 61999` / `0xF1EF`, RPC: `https://studio.genlayer.com/api`).
 4. Fund your wallet with GEN from the Studio **Accounts** panel.
-5. Deploy `reputation_ledger.py` -> `0x0AEe9Fe2d39272eA73976Bcca4284EC6E9f1291E`.
-6. Deploy `peercoin_core.py` -> `0xCf08ec64514C131bFBEe21A1319C0D58630258D9`.
+5. Deploy `reputation_ledger.py` (no args), copy the deployed address.
+6. Deploy `peercoin_core.py` with the 9 v0.3 constructor args (see [`scripts/deploy.md`](scripts/deploy.md)), copy the deployed address.
 7. Execute `set_core(peercoin_core_address)` on `ReputationLedger`.
+
+For unattended deploys (from a keystore-loaded shell), run [`scripts/deploy.py`](scripts/deploy.py) — it does all three steps and writes the resulting addresses to `submission/deployed_addresses_v3.txt`.
 
 Detailed deployment instructions are available in [`scripts/deploy.md`](file:///Users/peter/Downloads/AI/Genlayer/6-PeerCoin/scripts/deploy.md).
 
@@ -79,12 +81,12 @@ Detailed deployment instructions are available in [`scripts/deploy.md`](file:///
 
 ## 5. Deployed Contract Addresses (Studionet)
 
-**v0.3 — Governance Layer (current, live).** After redeploying with the two new appeal constructor params, fill these rows in and update `frontend/.env`.
+**v0.3 — Governance Layer (current, live).** Deployed 2026-09-08 via [`scripts/deploy.py`](scripts/deploy.py).
 
 | Contract | Version | Network | Address | Explorer Link |
 |---|---|---|---|---|
-| `PeerCoinCore` | v0.3 | studionet | _(fill in after redeploy)_ | [Explorer](https://explorer-studio.genlayer.com) |
-| `ReputationLedger` | v0.3 | studionet | _(fill in after redeploy)_ | [Explorer](https://explorer-studio.genlayer.com) |
+| `PeerCoinCore` | v0.3 | studionet | `0x451db646730cc3F32291A56ac82d1278A2EB1B0D` | [Explorer](https://explorer-studio.genlayer.com/tx/0x83cb4c09dab0b7d2cc3e902ac9b06e3c5b176b107ce9291b16bdfbd0142ea313) |
+| `ReputationLedger` | v0.3 | studionet | `0xD8fd9a079aF846466C518459BaAb7E375d998c7e` | [Explorer](https://explorer-studio.genlayer.com/tx/0x78ea4fdc026c9b41780ec93f3788b865565ae9a5dc12e9803fc8a30c37181da1) |
 
 **v0.2.16 — pre-appeal deployment (kept for reference, not wired to the current frontend).**
 
@@ -115,8 +117,8 @@ Detailed deployment instructions are available in [`scripts/deploy.md`](file:///
    ```
 2. Configure environment variables in `.env`:
    ```env
-   VITE_CONTRACT_ADDRESS=0xCf08ec64514C131bFBEe21A1319C0D58630258D9
-   VITE_REPUTATION_ADDRESS=0x0AEe9Fe2d39272eA73976Bcca4284EC6E9f1291E
+   VITE_CONTRACT_ADDRESS=0x451db646730cc3F32291A56ac82d1278A2EB1B0D
+   VITE_REPUTATION_ADDRESS=0xD8fd9a079aF846466C518459BaAb7E375d998c7e
    ```
 3. Start the local development server:
    ```bash

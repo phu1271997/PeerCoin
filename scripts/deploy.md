@@ -17,7 +17,7 @@ This guide provides step-by-step instructions for deploying the PeerCoin Intelli
 2. Copy and paste the entire contents of [`contracts/reputation_ledger.py`](file:///Users/peter/Downloads/AI/Genlayer/6-PeerCoin/contracts/reputation_ledger.py).
 3. Click **Deploy**.
 4. In the left panel under Transactions, click the deployment transaction and verify that **`Result: SUCCESS`**.
-5. Deployed Address: `0x0AEe9Fe2d39272eA73976Bcca4284EC6E9f1291E`.
+5. Copy the deployed address; you'll pass it into the core constructor in Step 2 and paste it as `VITE_REPUTATION_ADDRESS` in `frontend/.env`.
 
 ---
 
@@ -53,8 +53,9 @@ This guide provides step-by-step instructions for deploying the PeerCoin Intelli
 
 **v0.3 (Governance Layer — appeal court + tiered reputation)** — new addresses required.
 
-- `ReputationLedger v0.3`: _(fill in after redeploy)_
-- `PeerCoinCore v0.3`: _(fill in after redeploy)_
+- `ReputationLedger v0.3`: `0xD8fd9a079aF846466C518459BaAb7E375d998c7e` (deployed 2026-09-08, tx `0x78ea4fdc026c9b41780ec93f3788b865565ae9a5dc12e9803fc8a30c37181da1`)
+- `PeerCoinCore v0.3`: `0x451db646730cc3F32291A56ac82d1278A2EB1B0D` (deployed 2026-09-08, tx `0x83cb4c09dab0b7d2cc3e902ac9b06e3c5b176b107ce9291b16bdfbd0142ea313`)
+- Linked via `reputation.set_core(core)` tx `0x03a72776a3a8333eb28d186afe68709b92064cd0b6c210dfd6ad0e93a52acd03`
 
 **Previous v0.2.16 deployment (kept for reference — do NOT point the frontend at these; the v0.2 constructor is missing the two appeal params and every appeal call will revert):**
 
