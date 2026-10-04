@@ -94,7 +94,10 @@ export const FileAppeal: React.FC<FileAppealProps> = ({ paperId, account, onNavi
   }
 
   const isAuthor = account && account.toLowerCase() === paper.author.toLowerCase();
-  const isFailedReject = paper.state === 'FAILED' && paper.ai_verdict === 'REJECT';
+  // An ordinary REJECT lands in FINALIZED; only inconclusive/BORDERLINE runs
+  // land in FAILED. Both are appealable so long as the verdict is REJECT.
+  const isFailedReject =
+    (paper.state === 'FINALIZED' || paper.state === 'FAILED') && paper.ai_verdict === 'REJECT';
   const alreadyAppealed = paper.appeal != null;
 
   const stakeGen = (BigInt(cfg.appeal_stake_amount) / BigInt(10 ** 18)).toString();
@@ -135,7 +138,7 @@ export const FileAppeal: React.FC<FileAppealProps> = ({ paperId, account, onNavi
         {!isFailedReject && (
           <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-sm text-rose-300 flex items-start space-x-2">
             <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-            <span>Only papers in <code className="font-mono">FAILED</code> state with an <code className="font-mono">ai_verdict = REJECT</code> can be appealed. This paper is <code className="font-mono">{paper.state} / {paper.ai_verdict || '—'}</code>. BORDERLINE papers must be resubmitted, not appealed.</span>
+            <span>Only a finalized paper with an <code className="font-mono">ai_verdict = REJECT</code> can be appealed. This paper is <code className="font-mono">{paper.state} / {paper.ai_verdict || '—'}</code>. BORDERLINE papers must be resubmitted, not appealed.</span>
           </div>
         )}
         {alreadyAppealed && (

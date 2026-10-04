@@ -26,5 +26,5 @@ export function makeClient(userAddress: `0x${string}`) {
 // 2026-09-08. Old v0.2 fallback (0xCf08...58D9 / 0x0AEe...291E) removed —
 // pointing the frontend at v0.2 would revert every appeal / batch_profile
 // call because those methods don't exist there.
-export const CONTRACT_ADDRESS = (import.meta.env.VITE_CONTRACT_ADDRESS || '0x451db646730cc3F32291A56ac82d1278A2EB1B0D') as `0x${string}`;
-export const REPUTATION_ADDRESS = (import.meta.env.VITE_REPUTATION_ADDRESS || '0xD8fd9a079aF846466C518459BaAb7E375d998c7e') as `0x${string}`;
+export const CONTRACT_ADDRESS = (import.meta.env.VITE_CONTRACT_ADDRESS || '0x67037c93B8620EF5b78AeCD72cf793d925284104') as `0x${string}`;
+export const REPUTATION_ADDRESS = (import.meta.env.VITE_REPUTATION_ADDRESS || '0xb9501EbcdADFf3F4627dEEc3b0b0485a399100D8') as `0x${string}`;

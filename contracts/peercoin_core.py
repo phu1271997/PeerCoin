@@ -835,16 +835,45 @@ class Contract(gl.Contract):
         paper.finalized_at = _now_ts()
         self.papers[paper_id_str] = paper
 
+    def _reject_claims_frozen(self, paper_id_str: str, paper) -> bool:
+        """Payout obligations on a REJECT are RESERVED until the appeal window
+        closes with no appeal, or any filed appeal is resolved.
+
+        Returns True while claims must stay frozen. Without this, reviewers
+        aligned with a REJECT could drain the pool (which holds the author's
+        forfeited stake) during the appeal window; a later OVERTURN would then
+        have nothing left to refund the author, and the money paid for a
+        now-reversed alignment could never be clawed back. ACCEPT papers and
+        inconclusive BORDERLINE (FAILED) papers are never frozen here."""
+        if paper.state == STATE_APPEALED:
+            return True
+        if paper.ai_verdict != VERDICT_REJECT:
+            return False
+        if paper.state != STATE_FINALIZED:
+            return False
+        if paper_id_str in self.appeals:
+            # An appeal exists: frozen only until it resolves.
+            return not self.appeals[paper_id_str].resolved
+        # No appeal filed yet: frozen until the appeal window elapses.
+        if int(paper.finalized_at) == 0:
+            return False
+        now = _now_ts()
+        return now < (paper.finalized_at + self.appeal_window_secs)
+
     @gl.public.write
     def claim(self, paper_id_str: str) -> None:
         _require(paper_id_str in self.papers, "paper not found")
         paper = self.papers[paper_id_str]
 
-        # Freeze claims while an appeal is in flight — an author who filed
-        # appeal cannot also drain their (already-forfeited) author stake via
-        # the classic FAILED path, and reviewers must wait for the appeal to
-        # resolve because overturn flips who's aligned.
-        _require(paper.state != STATE_APPEALED, "paper is under appeal — claims frozen until resolve_appeal")
+        # Reserve payout obligations on a REJECT until its appeal window closes
+        # (or any filed appeal resolves). An author who filed an appeal cannot
+        # drain their forfeited stake meanwhile, and reviewers must wait because
+        # an overturn flips who is aligned — paying early would let funds be
+        # paid twice or pulled from another entitlement.
+        _require(
+            not self._reject_claims_frozen(paper_id_str, paper),
+            "REJECT payouts reserved until the appeal window closes or the appeal resolves",
+        )
 
         if paper.state == STATE_FAILED:
             if _addr_str(gl.message.sender_address) == paper.author and not paper.author_claimed:
@@ -933,12 +962,14 @@ class Contract(gl.Contract):
         caller = _addr_str(gl.message.sender_address)
         _require(caller == p.author, "only paper author may appeal")
 
-        # Only FAILED papers with a REJECT verdict are appealable. BORDERLINE
-        # papers already refund the author's stake, so appealing them would be
-        # gaming the system to get free bounty. FINALIZED (ACCEPT) papers have
-        # nothing to appeal.
-        _require(p.state == STATE_FAILED, "paper not in FAILED state")
-        _require(p.ai_verdict == "REJECT", "only REJECT verdicts are appealable (BORDERLINE requires resubmission)")
+        # An ordinary finalized REJECT is appealable. A plain REJECT lands in
+        # STATE_FINALIZED (only BORDERLINE / inconclusive runs land in FAILED),
+        # so both FINALIZED and FAILED are accepted here and the REJECT verdict
+        # check below is what actually gates eligibility. BORDERLINE papers
+        # already refund the author, and FINALIZED ACCEPT papers have nothing to
+        # appeal — both are rejected by the verdict check.
+        _require(p.state in (STATE_FINALIZED, STATE_FAILED), "only a finalized paper can be appealed")
+        _require(p.ai_verdict == VERDICT_REJECT, "only REJECT verdicts are appealable (BORDERLINE requires resubmission)")
 
         # Appeal window: must file within N seconds of finalize. Prevents an
         # author from sitting on a REJECT and appealing years later once the
@@ -1124,7 +1155,9 @@ class Contract(gl.Contract):
             appeal.new_reason = "appeal jury response malformed; upheld conservatively"
             self.appeals[paper_id_str] = appeal
             p.bounty_pool = p.bounty_pool + appeal.stake
-            p.state = STATE_FAILED
+            # Conservative uphold — REJECT stands; paper stays FINALIZED so the
+            # aligned reviewers' claims settle normally once claims unfreeze.
+            p.state = STATE_FINALIZED
             self.papers[paper_id_str] = p
             return
 
@@ -1151,17 +1184,20 @@ class Contract(gl.Contract):
             # now been reversed) get a make-good rep bump of +8.
             appeal.resolution_status = APPEAL_OVERTURNED
 
-            # Bonus is a % of the CURRENT bounty pool (before we restore author
-            # stake) — capped so overturn never bankrupts the pool.
-            bonus = (p.bounty_pool * bigint(APPEAL_WIN_BONUS_BPS)) // bigint(10000)
-            # Pay bonus + return author stake by pulling from bounty. Author
-            # stake was previously rolled INTO bounty on the FAILED verdict.
+            # Restore the author's forfeited stake and pay a bounty-funded
+            # bonus, BOTH strictly from this paper's own pool — never from
+            # another paper's funds. The REJECT rolled author_stake INTO the
+            # pool and claims were frozen, so the pool still holds it; the
+            # guards below are defense-in-depth so a payout can never exceed the
+            # pool even if that invariant were ever violated.
             restored_author_stake = self.author_stake_amount
+            if restored_author_stake > p.bounty_pool:
+                restored_author_stake = p.bounty_pool
+            available_for_bonus = p.bounty_pool - restored_author_stake
+            bonus = (p.bounty_pool * bigint(APPEAL_WIN_BONUS_BPS)) // bigint(10000)
+            if bonus > available_for_bonus:
+                bonus = available_for_bonus
             p.bounty_pool = p.bounty_pool - restored_author_stake - bonus
-            if int(p.bounty_pool) < 0:
-                # Bounty was smaller than the restore amount (shouldn't happen
-                # since the REJECT rolled stake INTO the bounty, but guard).
-                p.bounty_pool = bigint(0)
             p.author_stake = restored_author_stake + bonus
 
             # Rewrite scores on the paper record so downstream reads see the
@@ -1195,12 +1231,14 @@ class Contract(gl.Contract):
                     self.reviews[paper_id_str][rid] = r
                     rep.bump(_to_address(r.reviewer), i256(-5))
         else:
-            # UPHELD — original REJECT stands. Appeal stake is burned into the
-            # bounty pool. Paper returns to FAILED state so the reviewers'
-            # normal FAILED-state stake-refund path via claim() still works.
+            # UPHELD — original REJECT stands. The appeal stake is burned into
+            # the bounty pool. The paper returns to FINALIZED (verdict stays
+            # REJECT) so the reviewers who correctly aligned with the REJECT
+            # collect their stake + pool reward via the normal claim() path now
+            # that the appeal is resolved and claims unfreeze.
             appeal.resolution_status = APPEAL_UPHELD
             p.bounty_pool = p.bounty_pool + appeal.stake
-            p.state = STATE_FAILED
+            p.state = STATE_FINALIZED
             # Don't rewrite ai_reason — the appeal reason lives on the Appeal
             # record and the UI shows both.
 

@@ -154,6 +154,11 @@ export const PaperDetail: React.FC<PaperDetailProps> = ({ paperId, account, onNa
   const isAuthor = !!account && account.toLowerCase() === paper.author.toLowerCase();
   const isRejected = paper.ai_verdict === 'REJECT';
   const hasAppeal = paper.appeal != null;
+  // Payouts on a REJECT are reserved until its appeal window closes / any
+  // appeal resolves. These are the states we can know for certain client-side;
+  // the within-window case is also enforced on-chain (claim reverts).
+  const rejectClaimsReserved =
+    isRejected && (isAppealed || (hasAppeal && !paper.appeal?.resolved));
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
@@ -298,7 +303,7 @@ export const PaperDetail: React.FC<PaperDetailProps> = ({ paperId, account, onNa
         />
       )}
 
-      {!hasAppeal && isFailed && isRejected && isAuthor && (
+      {!hasAppeal && (isFinalized || isFailed) && isRejected && isAuthor && (
         <div className="p-6 rounded-2xl bg-slate-900 border border-amber-500/40 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div>
             <h3 className="text-base font-bold text-slate-100 mb-1 flex items-center space-x-2">
@@ -320,8 +325,20 @@ export const PaperDetail: React.FC<PaperDetailProps> = ({ paperId, account, onNa
         </div>
       )}
 
+      {/* Payouts reserved while an appeal is live / pending resolution */}
+      {rejectClaimsReserved && (
+        <div className="p-6 rounded-2xl bg-slate-900 border border-amber-500/30 text-sm text-amber-200 flex items-start space-x-2">
+          <Gavel className="w-5 h-5 flex-shrink-0 mt-0.5 text-amber-400" />
+          <span>
+            Payouts on this REJECT are <span className="font-semibold">reserved</span> until the appeal
+            window closes and any appeal resolves. Claims are frozen so funds can't be paid twice or
+            an overturn left unfunded. Check back once the appeal is resolved.
+          </span>
+        </div>
+      )}
+
       {/* Claim Rewards Panel */}
-      {isFinalized && (
+      {isFinalized && !rejectClaimsReserved && (
         <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4">
           <div>
             <h3 className="text-base font-bold text-slate-100 mb-1 flex items-center space-x-2">

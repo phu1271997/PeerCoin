@@ -81,12 +81,19 @@ Detailed deployment instructions are available in [`scripts/deploy.md`](file:///
 
 ## 5. Deployed Contract Addresses (Studionet)
 
-**v0.3 — Governance Layer (current, live).** Deployed 2026-09-08 via [`scripts/deploy.py`](scripts/deploy.py).
+**v0.3.1 — Appeal-settlement fix (current, live).** Redeployed 2026-10-04 via [`scripts/deploy.py`](scripts/deploy.py). An ordinary finalized REJECT is now appeal-eligible and its payouts are reserved until the appeal window and any appeal resolve (see [CHANGELOG.md](CHANGELOG.md)).
 
 | Contract | Version | Network | Address | Explorer Link |
 |---|---|---|---|---|
-| `PeerCoinCore` | v0.3 | studionet | `0x451db646730cc3F32291A56ac82d1278A2EB1B0D` | [Explorer](https://explorer-studio.genlayer.com/tx/0x83cb4c09dab0b7d2cc3e902ac9b06e3c5b176b107ce9291b16bdfbd0142ea313) |
-| `ReputationLedger` | v0.3 | studionet | `0xD8fd9a079aF846466C518459BaAb7E375d998c7e` | [Explorer](https://explorer-studio.genlayer.com/tx/0x78ea4fdc026c9b41780ec93f3788b865565ae9a5dc12e9803fc8a30c37181da1) |
+| `PeerCoinCore` | v0.3.1 | studionet | `0x67037c93B8620EF5b78AeCD72cf793d925284104` | [Explorer](https://explorer-studio.genlayer.com/tx/0xa39d522546bc6b5afa08a9e05315e983ac36926df9433327bf1e087ae03b5a42) |
+| `ReputationLedger` | v0.3.1 | studionet | `0xb9501EbcdADFf3F4627dEEc3b0b0485a399100D8` | [Explorer](https://explorer-studio.genlayer.com/tx/0xcb2b0a278a402ceacf6d70b756d1aee253e6af79dd3ec9cfeb2732ceb15c63be) |
+
+**v0.3 — Governance Layer (superseded).**
+
+| Contract | Version | Network | Address |
+|---|---|---|---|
+| `PeerCoinCore` | v0.3 | studionet | `0x451db646730cc3F32291A56ac82d1278A2EB1B0D` |
+| `ReputationLedger` | v0.3 | studionet | `0xD8fd9a079aF846466C518459BaAb7E375d998c7e` |
 
 **v0.2.16 — pre-appeal deployment (kept for reference, not wired to the current frontend).**
 
@@ -117,8 +124,8 @@ Detailed deployment instructions are available in [`scripts/deploy.md`](file:///
    ```
 2. Configure environment variables in `.env`:
    ```env
-   VITE_CONTRACT_ADDRESS=0x451db646730cc3F32291A56ac82d1278A2EB1B0D
-   VITE_REPUTATION_ADDRESS=0xD8fd9a079aF846466C518459BaAb7E375d998c7e
+   VITE_CONTRACT_ADDRESS=0x67037c93B8620EF5b78AeCD72cf793d925284104
+   VITE_REPUTATION_ADDRESS=0xb9501EbcdADFf3F4627dEEc3b0b0485a399100D8
    ```
 3. Start the local development server:
    ```bash

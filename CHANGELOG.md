@@ -2,6 +2,37 @@
 
 All notable changes to the PeerCoin project will be documented in this file. Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Milestones are grouped by the classification used in the [GenLayer Builder milestone rubric](../gen-rules/04-upgrade_project.md).
 
+## [0.3.1] — 2026-10-04 — Appeal-settlement fix (reviewer feedback)
+
+Studionet redeploy. Core `0x67037c93B8620EF5b78AeCD72cf793d925284104`,
+Reputation `0xb9501EbcdADFf3F4627dEEc3b0b0485a399100D8`.
+
+### Fixed
+- **An ordinary finalized REJECT is now eligible for its appeal.** A plain
+  REJECT lands in `FINALIZED` (only inconclusive/BORDERLINE runs land in
+  `FAILED`), but `file_appeal` previously required `FAILED` — so a normal REJECT
+  could never be appealed. `file_appeal` now accepts `FINALIZED` or `FAILED`
+  with an `ai_verdict == REJECT`. Frontend appeal gating updated to match.
+- **Payout obligations are reserved until the appeal window and any appeal
+  resolve.** New `_reject_claims_frozen` freezes `claim` on a REJECT while the
+  appeal window is open or an appeal is pending, so reviewers can't drain the
+  pool (which holds the author's forfeited stake) before a possible overturn.
+  Without this, an overturn had nothing left to refund the author and money paid
+  for a now-reversed alignment could not be clawed back.
+- **UPHELD / conservative-uphold now return the paper to `FINALIZED`** (verdict
+  stays REJECT) so the correctly-aligned reviewers collect stake + pool reward
+  via the normal claim path once claims unfreeze, instead of a refund-only
+  `FAILED` path that underpaid them.
+- **Overturn payout is capped to the paper's own pool** (restore author stake
+  first, then bound the win bonus to what remains) so a refund can never be
+  taken from another paper's entitlement.
+
+### Tests
+- `tests/test_appeal_e2e.py`: end-to-end REJECT → UPHELD and REJECT → OVERTURNED,
+  covering early claims (frozen), repeated claims (revert), and a conservation
+  assertion that total paid never exceeds this paper's deposits. Full suite: 70
+  passing.
+
 ## [Unreleased]
 
 ### Milestone Phase 3 — Governance Layer v1: Appeal Court + Tiered Reputation + Adversarial Re-Jury (2026-09-07)
