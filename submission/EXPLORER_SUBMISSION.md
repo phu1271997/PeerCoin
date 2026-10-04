@@ -151,7 +151,7 @@ https://explorer-studio.genlayer.com/address/0x0AEe9Fe2d39272eA73976Bcca4284EC6E
 - **Role:** `ReputationLedger` — persistent reviewer scores (+5 aligned / -3 misaligned), bumped only by `PeerCoinCore`.
 
 ## Website
-https://peercoin-sooty.vercel.app
+https://peercoin-psi.vercel.app
 
 ## GitHub
 https://github.com/phu1271997/PeerCoin
@@ -173,12 +173,12 @@ None — leave blank on the form.
 
 **Deploy state**
 - [ ] Latest commit pushed to `main` (last commit `14afe5f`).
-- [ ] Vercel prod deployment `peercoin-sooty.vercel.app` returns 200, latest build.
+- [ ] Vercel prod deployment `peercoin-psi.vercel.app` returns 200, latest build.
 - [ ] `gen_getContractSchema` returns all methods for both contracts.
 - [ ] Explorer address page shows tx with GENVM RESULT: SUCCESS (after seeding).
 
 **End-to-end test (in incognito)**
-- [ ] Open `peercoin-sooty.vercel.app` in incognito, no wallet.
+- [ ] Open `peercoin-psi.vercel.app` in incognito, no wallet.
 - [ ] See ≥ 2 seeded papers with visible verdicts on Home.
 - [ ] Click into a FINALIZED paper, see AI Jury Verdict panel populated.
 - [ ] Leaderboard lists ≥ 2 reviewer addresses with scores.

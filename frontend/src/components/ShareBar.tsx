@@ -21,7 +21,7 @@ interface ShareBarProps {
  */
 export const ShareBar: React.FC<ShareBarProps> = ({ paperId, title, verdict, fieldTag }) => {
   const [copied, setCopied] = useState(false);
-  const url = `https://peercoin-sooty.vercel.app/#paper-${paperId}`;
+  const url = `https://peercoin-psi.vercel.app/#paper-${paperId}`;
 
   const verdictText = verdict
     ? verdict === 'ACCEPT'
